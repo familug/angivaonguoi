@@ -63,7 +63,7 @@ defmodule Angivaonguoi.ImageProcessor do
           ]
         }
       ],
-      "generationConfig" => %{"temperature" => 0.1, "maxOutputTokens" => 1024}
+      "generationConfig" => %{"temperature" => 0.1, "maxOutputTokens" => 2048}
     }
 
     case Req.post(url, json: body, receive_timeout: 60_000) do

@@ -9,6 +9,13 @@ defmodule Angivaonguoi.GeminiParser do
   and categories from a raw Gemini API response map.
   """
   def parse_gemini_response(%{"candidates" => [candidate | _]}) do
+    finish_reason = candidate["finishReason"]
+
+    if finish_reason not in [nil, "STOP"] do
+      require Logger
+      Logger.error("Gemini finishReason=#{finish_reason}, candidate: #{inspect(candidate)}")
+    end
+
     with text <- get_in(candidate, ["content", "parts", Access.at(0), "text"]),
          {:ok, json} <- extract_json(text),
          {:ok, decoded} <- Jason.decode(json),
@@ -75,8 +82,24 @@ defmodule Angivaonguoi.GeminiParser do
       |> String.trim()
 
     case Regex.run(~r/\{.*\}/s, cleaned) do
-      [json | _] -> {:ok, json}
-      nil -> {:error, "No JSON object found in response text"}
+      [json | _] ->
+        {:ok, json}
+
+      nil ->
+        require Logger
+        Logger.error("Gemini response had no JSON object. Raw text: #{inspect(text)}")
+
+        hint =
+          cond do
+            String.contains?(text, "cannot") or String.contains?(text, "unable") or
+                String.contains?(text, "can't") ->
+              "Gemini could not read this image. Try a clearer photo showing the ingredient label."
+
+            true ->
+              "Unexpected response from AI. Try a clearer photo of the product label."
+          end
+
+        {:error, hint}
     end
   end
 

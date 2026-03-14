@@ -3,7 +3,12 @@ defmodule AngivaonguoiWeb.AuthLive.Login do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, form: to_form(%{}, as: :user))}
+    {:ok, assign(socket, form: to_form(%{}, as: :user), trigger_submit: false)}
+  end
+
+  @impl true
+  def handle_event("login", params, socket) do
+    {:noreply, assign(socket, form: to_form(params, as: :user), trigger_submit: true)}
   end
 
   @impl true
@@ -14,14 +19,13 @@ defmodule AngivaonguoiWeb.AuthLive.Login do
         <div class="card-body space-y-4">
           <h1 class="text-2xl font-bold text-center">Log In</h1>
 
-          <%!-- Regular form POST so the controller can write the session cookie --%>
-          <form action={~p"/session"} method="post" class="space-y-4">
-            <input
-              type="hidden"
-              name="_csrf_token"
-              value={Phoenix.Controller.get_csrf_token()}
-            />
-
+          <.form
+            for={@form}
+            action={~p"/session"}
+            phx-submit="login"
+            phx-trigger-action={@trigger_submit}
+            class="space-y-4"
+          >
             <div>
               <label class="label"><span class="label-text">Email</span></label>
               <input
@@ -45,7 +49,7 @@ defmodule AngivaonguoiWeb.AuthLive.Login do
             </div>
 
             <button type="submit" class="btn btn-primary w-full">Log In</button>
-          </form>
+          </.form>
 
           <p class="text-center text-sm text-gray-500">
             No account yet?
