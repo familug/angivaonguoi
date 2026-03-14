@@ -21,7 +21,7 @@ if System.get_env("PHX_SERVER") do
 end
 
 config :angivaonguoi, AngivaonguoiWeb.Endpoint,
-  http: [ip: {127, 0, 0, 1}, port: String.to_integer(System.get_env("PORT", "4000"))]
+  http: [ip: {0, 0, 0, 0}, port: String.to_integer(System.get_env("PORT", "4000"))]
 
 config :angivaonguoi,
   gemini_api_key: System.get_env("GEMINI_API_KEY") || "",
@@ -64,9 +64,10 @@ if config_env() == :prod do
   config :angivaonguoi, AngivaonguoiWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
     http: [
-      # Bind only to localhost — nginx proxies from the outside.
-      # This prevents the app from being reachable directly on the public interface.
-      ip: {127, 0, 0, 1}
+      # Bind to all interfaces inside the container.
+      # External access is restricted by the host-side port mapping (127.0.0.1:4000->4000)
+      # and nginx, which is the only public-facing entry point.
+      ip: {0, 0, 0, 0}
     ],
     secret_key_base: secret_key_base
 
