@@ -4,7 +4,7 @@ services:
     image: angivaonguoi:latest
     restart: unless-stopped
     ports:
-      - "4000:4000"
+      - "127.0.0.1:4000:4000"
     environment:
       DATABASE_URL: "ecto://postgres:${POSTGRES_PASSWORD}@db/angivaonguoi_prod"
       SECRET_KEY_BASE: "${SECRET_KEY_BASE}"
