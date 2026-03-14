@@ -11,10 +11,20 @@ defmodule Angivaonguoi.Accounts do
   end
 
   def register_user(attrs) do
+    first_user? = Repo.aggregate(User, :count, :id) == 0
+
     %User{}
     |> User.registration_changeset(attrs)
+    |> Ecto.Changeset.put_change(:is_admin, first_user?)
     |> Repo.insert()
   end
+
+  def valid_refer_code?(code) when is_binary(code) do
+    expected = Application.get_env(:angivaonguoi, :refer_code, "changeme")
+    String.trim(code) == String.trim(expected)
+  end
+
+  def valid_refer_code?(_), do: false
 
   @doc """
   Verifies email + password. Returns `{:ok, user}` or `{:error, :invalid_credentials}`.
@@ -30,7 +40,6 @@ defmodule Angivaonguoi.Accounts do
         {:error, :invalid_credentials}
 
       true ->
-        # Run dummy hash to prevent timing attacks
         Bcrypt.no_user_verify()
         {:error, :invalid_credentials}
     end

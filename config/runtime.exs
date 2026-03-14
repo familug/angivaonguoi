@@ -24,7 +24,8 @@ config :angivaonguoi, AngivaonguoiWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
 config :angivaonguoi,
-  gemini_api_key: System.get_env("GEMINI_API_KEY") || ""
+  gemini_api_key: System.get_env("GEMINI_API_KEY") || "",
+  refer_code: System.get_env("REFER_CODE") || "changeme"
 
 if config_env() == :prod do
   database_url =

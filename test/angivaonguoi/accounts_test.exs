@@ -18,6 +18,22 @@ defmodule Angivaonguoi.AccountsTest do
       assert user.hashed_password != "secret123"
     end
 
+    test "first registered user becomes admin" do
+      {:ok, first} =
+        Accounts.register_user(%{email: "first@example.com", username: "first", password: "pass123"})
+
+      assert first.is_admin == true
+    end
+
+    test "second registered user is not admin" do
+      Accounts.register_user(%{email: "first@example.com", username: "first", password: "pass123"})
+
+      {:ok, second} =
+        Accounts.register_user(%{email: "second@example.com", username: "second", password: "pass123"})
+
+      assert second.is_admin == false
+    end
+
     test "returns error for missing fields" do
       assert {:error, changeset} = Accounts.register_user(%{})
       assert %{email: _, username: _, password: _} = errors_on(changeset)
@@ -61,6 +77,25 @@ defmodule Angivaonguoi.AccountsTest do
                })
 
       assert "has already been taken" in errors_on(changeset).username
+    end
+  end
+
+  describe "valid_refer_code?/1" do
+    test "returns true for correct code" do
+      assert Accounts.valid_refer_code?(Application.get_env(:angivaonguoi, :refer_code))
+    end
+
+    test "returns false for wrong code" do
+      refute Accounts.valid_refer_code?("totally_wrong")
+    end
+
+    test "returns false for nil" do
+      refute Accounts.valid_refer_code?(nil)
+    end
+
+    test "trims whitespace" do
+      code = Application.get_env(:angivaonguoi, :refer_code)
+      assert Accounts.valid_refer_code?("  #{code}  ")
     end
   end
 

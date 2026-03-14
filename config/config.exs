@@ -10,7 +10,8 @@ import Config
 config :angivaonguoi,
   ecto_repos: [Angivaonguoi.Repo],
   generators: [timestamp_type: :utc_datetime],
-  gemini_api_key: System.get_env("GEMINI_API_KEY") || ""
+  gemini_api_key: System.get_env("GEMINI_API_KEY") || "",
+  refer_code: System.get_env("REFER_CODE") || "changeme"
 
 # Configure the endpoint
 config :angivaonguoi, AngivaonguoiWeb.Endpoint,

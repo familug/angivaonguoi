@@ -26,6 +26,12 @@ defmodule Angivaonguoi.CatalogTest do
       assert hd(fetched.ingredients).name == "Sugar"
     end
 
+    test "delete_product/1 removes the product" do
+      {:ok, product} = Catalog.create_product(%{name: "Delete Me"})
+      assert {:ok, _} = Catalog.delete_product(product)
+      assert_raise Ecto.NoResultsError, fn -> Catalog.get_product!(product.id) end
+    end
+
     test "create_product/1 with valid data creates a product" do
       assert {:ok, %Product{} = product} = Catalog.create_product(%{name: "Lay's Chips"})
       assert product.name == "Lay's Chips"

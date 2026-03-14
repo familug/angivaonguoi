@@ -11,12 +11,37 @@ defmodule AngivaonguoiWeb.ProductLive.Show do
   end
 
   @impl true
+  def handle_event("delete_product", _params, socket) do
+    case Catalog.delete_product(socket.assigns.product) do
+      {:ok, _} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, "Product deleted.")
+         |> redirect(to: ~p"/products")}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "Failed to delete product.")}
+    end
+  end
+
+  @impl true
   def render(assigns) do
     ~H"""
     <div class="max-w-3xl mx-auto px-4 py-8">
-      <.link navigate={~p"/products"} class="btn btn-ghost btn-sm mb-6">
-        &larr; Back to Products
-      </.link>
+      <div class="flex items-center justify-between mb-6">
+        <.link navigate={~p"/products"} class="btn btn-ghost btn-sm">
+          &larr; Back to Products
+        </.link>
+
+        <button
+          :if={@current_user && @current_user.is_admin}
+          phx-click="delete_product"
+          data-confirm={"Delete "#{@product.name}"? This cannot be undone."}
+          class="btn btn-error btn-sm"
+        >
+          Delete Product
+        </button>
+      </div>
 
       <div class="card bg-base-100 border border-base-200 shadow">
         <div class="card-body space-y-6">

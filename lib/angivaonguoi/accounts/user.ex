@@ -7,6 +7,7 @@ defmodule Angivaonguoi.Accounts.User do
     field :username, :string
     field :hashed_password, :string
     field :password, :string, virtual: true
+    field :is_admin, :boolean, default: false
 
     timestamps(type: :utc_datetime)
   end

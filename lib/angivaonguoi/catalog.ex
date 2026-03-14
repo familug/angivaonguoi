@@ -37,6 +37,10 @@ defmodule Angivaonguoi.Catalog do
     |> Repo.insert()
   end
 
+  def delete_product(%Product{} = product) do
+    Repo.delete(product)
+  end
+
   def create_product_with_ingredients(name, ingredients)
       when is_binary(name) and is_list(ingredients) do
     create_product_with_ingredients_and_categories(name, ingredients, [])

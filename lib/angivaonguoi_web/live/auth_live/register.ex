@@ -59,6 +59,17 @@ defmodule AngivaonguoiWeb.AuthLive.Register do
               />
             </div>
 
+            <div>
+              <label class="label"><span class="label-text">Refer Code</span></label>
+              <input
+                type="text"
+                name="user[refer_code]"
+                class="input input-bordered w-full"
+                placeholder="Enter invite code"
+                required
+              />
+            </div>
+
             <button type="submit" class="btn btn-primary w-full">Register</button>
           </.form>
 
