@@ -1,56 +1,58 @@
 # ---- Build stage ----
-FROM docker.io/hexpm/elixir:1.18-erlang-27-debian-bookworm-20250407-slim AS builder
+FROM docker.io/hexpm/elixir:1.18-erlang-27.3.4.9-debian-bookworm-20260223-slim AS builder
 
+# Only C compiler + git: C for bcrypt NIF, git for heroicons sparse checkout dep
 RUN apt-get update -y && \
-    apt-get install -y build-essential git curl nodejs npm && \
+    apt-get install -y --no-install-recommends build-essential git ca-certificates && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Install hex + rebar
 RUN mix local.hex --force && mix local.rebar --force
 
 ENV MIX_ENV=prod
 
-# Fetch dependencies
+# Fetch deps — separate layer so it's cached unless mix.exs/mix.lock change
 COPY mix.exs mix.lock ./
 RUN mix deps.get --only prod
 
-# Copy config files needed at compile time
-COPY config/config.exs config/prod.exs config/
+# Compile-time and runtime config
+COPY config/config.exs config/prod.exs config/runtime.exs config/
 
-# Compile dependencies
+# Compile deps (separate cached layer)
 RUN mix deps.compile
 
-# Copy assets and compile them
-COPY assets/ assets/
+# Copy source
 COPY priv/ priv/
 COPY lib/ lib/
+COPY assets/ assets/
 
+# Compile app first — generates _build/prod/phoenix-colocated/ needed by esbuild
+RUN mix compile
+
+# Download esbuild/tailwind binaries and compile assets
 RUN mix assets.deploy
 
 # Build release
-RUN mix compile && mix release
+RUN mix release
 
 # ---- Runtime stage ----
 FROM docker.io/debian:bookworm-slim AS runtime
 
 RUN apt-get update -y && \
-    apt-get install -y libstdc++6 openssl libncurses5 locales ca-certificates && \
+    apt-get install -y --no-install-recommends libstdc++6 openssl libncurses6 locales ca-certificates && \
     apt-get clean && rm -rf /var/lib/apt/lists/* && \
     sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && locale-gen
 
 ENV LANG=en_US.UTF-8
 ENV LANGUAGE=en_US:en
 ENV LC_ALL=en_US.UTF-8
-ENV MIX_ENV=prod
 ENV PHX_SERVER=true
 
 WORKDIR /app
 
 COPY --from=builder /app/_build/prod/rel/angivaonguoi ./
 
-# Persist uploaded images outside the container via a volume
 VOLUME ["/app/lib/angivaonguoi-0.1.0/priv/static/uploads"]
 
 EXPOSE 4000

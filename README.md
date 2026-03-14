@@ -1,18 +1,110 @@
-# Angivaonguoi
+# Angivaonguoi — Food Product Catalog
 
-To start your Phoenix server:
+A Phoenix LiveView app that lets you catalog food products by uploading product images. Google Gemini Vision AI extracts the product name, ingredients (with percentages), categories, and barcode automatically.
 
-* Run `mix setup` to install and setup dependencies
-* Start Phoenix endpoint with `mix phx.server` or inside IEx with `iex -S mix phx.server`
+**Features:**
+- Upload a product photo → AI reads the label
+- Browse products filtered by category
+- Click any ingredient to find all products containing it, sortable by amount
+- User accounts — only logged-in users can upload products
 
-Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
+---
 
-Ready to run in production? Please [check our deployment guides](https://hexdocs.pm/phoenix/deployment.html).
+## Local Development
 
-## Learn more
+**Prerequisites:** Elixir 1.15+, PostgreSQL, a [Gemini API key](https://aistudio.google.com/app/apikey)
 
-* Official website: https://www.phoenixframework.org/
-* Guides: https://hexdocs.pm/phoenix/overview.html
-* Docs: https://hexdocs.pm/phoenix
-* Forum: https://elixirforum.com/c/phoenix-forum
-* Source: https://github.com/phoenixframework/phoenix
+```bash
+# 1. Clone and install dependencies
+mix setup
+
+# 2. Set your Gemini API key
+cp .env.example .env
+# edit .env and set GEMINI_API_KEY=your_key_here
+
+# 3. Start the server
+source .env && mix phx.server
+```
+
+Visit [http://localhost:4000](http://localhost:4000).
+
+---
+
+## Deploy with Podman Compose
+
+### Prerequisites
+
+- [Podman](https://podman.io/getting-started/installation) with the `podman-compose` plugin
+- A server with ports 4000 (or 80/443 behind a reverse proxy) open
+
+### Step 1 — Prepare secrets
+
+```bash
+cp .env.prod.example .env.prod
+```
+
+Edit `.env.prod` and fill in all values:
+
+| Variable | How to get it |
+|---|---|
+| `SECRET_KEY_BASE` | Run `mix phx.gen.secret` (or `openssl rand -base64 48`) |
+| `PHX_HOST` | Your server's domain name or IP (no `https://`) |
+| `GEMINI_API_KEY` | [Google AI Studio](https://aistudio.google.com/app/apikey) |
+| `POSTGRES_PASSWORD` | Choose any strong password |
+
+### Step 2 — Build the image
+
+```bash
+podman compose --env-file .env.prod build
+```
+
+### Step 3 — Run database migrations
+
+```bash
+podman compose --env-file .env.prod run --rm migrate
+```
+
+### Step 4 — Start the application
+
+```bash
+podman compose --env-file .env.prod up -d app db
+```
+
+The app is now running at `http://<your-host>:4000`.
+
+### Useful commands
+
+```bash
+# View logs
+podman compose --env-file .env.prod logs -f app
+
+# Stop everything
+podman compose --env-file .env.prod down
+
+# Upgrade: rebuild image, re-run migrations, restart app
+podman compose --env-file .env.prod build
+podman compose --env-file .env.prod run --rm migrate
+podman compose --env-file .env.prod up -d app
+
+# Open a remote shell inside the running container
+podman compose --env-file .env.prod exec app bin/angivaonguoi remote
+```
+
+### Data persistence
+
+- **PostgreSQL data** is stored in the `pgdata` named volume — survives container restarts and rebuilds.
+- **Uploaded images** are stored in the `uploads` named volume mounted at `/app/lib/angivaonguoi-0.1.0/priv/static/uploads`.
+
+---
+
+## Architecture
+
+| Layer | Technology |
+|---|---|
+| Web framework | Phoenix LiveView (Elixir) |
+| Database | PostgreSQL via Ecto |
+| AI image parsing | Google Gemini Vision API |
+| Password hashing | bcrypt (`bcrypt_elixir`) |
+| Styling | Tailwind CSS + DaisyUI |
+| Asset pipeline | Mix esbuild + tailwind (no Node needed) |
+| Container | Podman / Docker (OCI-compatible) |
