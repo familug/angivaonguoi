@@ -43,15 +43,18 @@ defmodule Angivaonguoi.GeminiParser do
   def build_prompt do
     """
     Analyze this food or beverage product image. Extract:
-    1. The product name (brand + product type, e.g. "Heineken Beer", "Lay's Classic Chips")
+    1. The product name (brand + product type, e.g. "Heineken Beer", "Lay's Classic Chips", "Mì Hảo Hảo").
     2. The barcode number if visible on the label (EAN-13, UPC-A, etc.), or null if not visible.
     3. The full list of ingredients as printed on the label.
        For each ingredient, extract:
        - "name": the ingredient name WITHOUT the percentage/amount
        - "amount_raw": the raw amount/percentage string as printed (e.g. "61%", "200mg", "1.2g/100ml"), or null if not shown
        - "amount_percent": the numeric percentage as a number (e.g. 61.0), or null if not a percentage
-    4. The product categories (e.g. "Beer", "Soft Drinks", "Chips", "Snacks", "Dairy", "Alcohol").
+    4. The product categories (e.g. "Beer", "Soft Drinks", "Chips", "Snacks", "Dairy", "Alcohol", "Mì ăn liền").
        Use broad, reusable categories so similar products share the same category.
+
+    IMPORTANT: Keep all text in the original language as printed on the label.
+    If the label is in Vietnamese, return Vietnamese text. Do NOT translate anything.
 
     Return ONLY valid JSON, no extra text:
     {
