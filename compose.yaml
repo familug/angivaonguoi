@@ -9,7 +9,7 @@ services:
       DATABASE_URL: "ecto://postgres:${POSTGRES_PASSWORD}@db/angivaonguoi_prod"
       SECRET_KEY_BASE: "${SECRET_KEY_BASE}"
       GEMINI_API_KEY: "${GEMINI_API_KEY}"
-      PHX_HOST: "${PHX_HOST:-localhost}"
+      PHX_HOST: "${PHX_HOST:-angi.pymi.vn}"
       PHX_SERVER: "true"
       POOL_SIZE: "10"
     volumes:

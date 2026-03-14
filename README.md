@@ -72,6 +72,29 @@ podman compose --env-file .env.prod up -d app db
 
 The app is now running at `http://<your-host>:4000`.
 
+### Nginx reverse proxy (host, with Cloudflare)
+
+The app runs on port 4000 inside the container. Nginx runs on the host and proxies to it. Cloudflare sits in front of Nginx and handles HTTPS.
+
+```bash
+# Copy the config to nginx sites-available
+sudo cp nginx/angi.pymi.vn.conf /etc/nginx/sites-available/angi.pymi.vn
+sudo ln -s /etc/nginx/sites-available/angi.pymi.vn /etc/nginx/sites-enabled/
+
+# Test and reload
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+**Cloudflare settings:**
+- DNS: A record `angi.pymi.vn` → your server IP, **Proxied** (orange cloud)
+- SSL/TLS mode: **Full** (Cloudflare ↔ origin is plain HTTP, Cloudflare ↔ browser is HTTPS)
+- No certificate needed on the server — Cloudflare handles it
+
+**PHX_HOST** in `.env.prod` must match the domain:
+```
+PHX_HOST=angi.pymi.vn
+```
+
 ### Useful commands
 
 ```bash
