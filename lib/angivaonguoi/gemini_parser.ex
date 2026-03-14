@@ -50,11 +50,15 @@ defmodule Angivaonguoi.GeminiParser do
        - "name": the ingredient name WITHOUT the percentage/amount
        - "amount_raw": the raw amount/percentage string as printed (e.g. "61%", "200mg", "1.2g/100ml"), or null if not shown
        - "amount_percent": the numeric percentage as a number (e.g. 61.0), or null if not a percentage
-    4. The product categories (e.g. "Beer", "Soft Drinks", "Chips", "Snacks", "Dairy", "Alcohol", "Mì ăn liền").
-       Use broad, reusable categories so similar products share the same category.
+    4. The product categories (e.g. "Beer", "Soft Drinks", "Instant Noodles", "Chips", "Snacks", "Dairy", "Alcohol", "Seasoning", "Sauce").
+       Use broad, reusable English category names so similar products share the same category.
+       Categories MUST always be in English regardless of the product's language.
 
-    IMPORTANT: Keep all text in the original language as printed on the label.
-    If the label is in Vietnamese, return Vietnamese text. Do NOT translate anything.
+    IMPORTANT language rules:
+    - "product_name" and "ingredients[].name": keep exactly as printed on the label. If Vietnamese, use Vietnamese.
+    - "categories": always English.
+    - "amount_raw": keep exactly as printed (numbers/symbols are language-neutral).
+    - Do NOT translate product names or ingredient names.
 
     Return ONLY valid JSON, no extra text:
     {
