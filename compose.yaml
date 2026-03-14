@@ -1,0 +1,51 @@
+services:
+  app:
+    build: .
+    image: angivaonguoi:latest
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      DATABASE_URL: "ecto://postgres:${POSTGRES_PASSWORD}@db/angivaonguoi_prod"
+      SECRET_KEY_BASE: "${SECRET_KEY_BASE}"
+      GEMINI_API_KEY: "${GEMINI_API_KEY}"
+      PHX_HOST: "${PHX_HOST:-localhost}"
+      PHX_SERVER: "true"
+      POOL_SIZE: "10"
+    volumes:
+      - uploads:/app/lib/angivaonguoi-0.1.0/priv/static/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+  migrate:
+    build: .
+    image: angivaonguoi:latest
+    command: ["bin/angivaonguoi", "eval", "Angivaonguoi.Release.migrate()"]
+    environment:
+      DATABASE_URL: "ecto://postgres:${POSTGRES_PASSWORD}@db/angivaonguoi_prod"
+      SECRET_KEY_BASE: "${SECRET_KEY_BASE}"
+      GEMINI_API_KEY: ""
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: on-failure
+
+  db:
+    image: docker.io/postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      POSTGRES_DB: angivaonguoi_prod
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:
+  uploads:
