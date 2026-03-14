@@ -1,0 +1,83 @@
+defmodule AngivaonguoiWeb.ProductLive.Show do
+  use AngivaonguoiWeb, :live_view
+
+  alias Angivaonguoi.Catalog
+
+  @impl true
+  def mount(%{"id" => id}, _session, socket) do
+    product = Catalog.get_product_with_all!(id)
+    amounts = Catalog.ingredient_amounts_for(product)
+    {:ok, assign(socket, product: product, amounts: amounts)}
+  end
+
+  @impl true
+  def render(assigns) do
+    ~H"""
+    <div class="max-w-3xl mx-auto px-4 py-8">
+      <.link navigate={~p"/products"} class="btn btn-ghost btn-sm mb-6">
+        &larr; Back to Products
+      </.link>
+
+      <div class="card bg-base-100 border border-base-200 shadow">
+        <div class="card-body space-y-6">
+          <img
+            :if={@product.image_url}
+            src={@product.image_url}
+            alt={@product.name}
+            class="w-full max-h-72 object-contain rounded-lg bg-base-200 mb-2"
+          />
+
+          <div>
+            <h1 class="text-2xl font-bold text-gray-900"><%= @product.name %></h1>
+
+            <div :if={@product.barcode} class="mt-1 text-sm text-gray-400 font-mono">
+              Barcode: <%= @product.barcode %>
+            </div>
+
+            <div :if={@product.categories != []} class="flex flex-wrap gap-2 mt-3">
+              <.link
+                :for={category <- @product.categories}
+                navigate={~p"/products?category=#{category.id}"}
+                class="badge badge-primary badge-outline cursor-pointer hover:badge-primary transition-colors"
+              >
+                <%= category.name %>
+              </.link>
+            </div>
+          </div>
+
+          <div>
+            <h2 class="text-lg font-semibold text-gray-700 mb-3">Ingredients</h2>
+
+            <div :if={@product.ingredients == []} class="text-gray-500">
+              No ingredients recorded.
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+              <.link
+                :for={ingredient <- @product.ingredients}
+                navigate={~p"/ingredients/#{ingredient.id}"}
+                class="group flex items-center gap-1.5 badge badge-outline hover:badge-secondary transition-colors cursor-pointer py-3 px-4 text-sm"
+              >
+                <span><%= ingredient.name %></span>
+                <span
+                  :if={amount_label(@amounts, ingredient.id)}
+                  class="text-xs font-semibold text-primary opacity-80"
+                >
+                  <%= amount_label(@amounts, ingredient.id) %>
+                </span>
+              </.link>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    """
+  end
+
+  defp amount_label(amounts, ingredient_id) do
+    case Map.get(amounts, ingredient_id) do
+      %{amount_raw: raw} when is_binary(raw) and raw != "" -> raw
+      _ -> nil
+    end
+  end
+end

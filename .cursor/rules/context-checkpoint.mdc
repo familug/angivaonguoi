@@ -1,0 +1,60 @@
+---
+description: Write project knowledge to AGENTS.md when context is getting full
+alwaysApply: true
+---
+
+# Context Checkpoint Rule
+
+When the conversation context reaches ~60% capacity, you MUST write all accumulated project knowledge to `AGENTS.md` in the workspace root before continuing.
+
+## When to trigger
+
+- Context feels long (many back-and-forth exchanges)
+- You are about to start a complex new task
+- After any significant feature is completed
+- When user asks you to "save context" or "update AGENTS"
+
+## What to write in AGENTS.md
+
+The file must contain everything a fresh agent needs to continue without re-reading the chat:
+
+1. **Project overview** — what the app does, tech stack, key design decisions
+2. **Architecture** — modules, schemas, context functions, LiveViews, routes
+3. **Key files** — most important files and what each does
+4. **Environment setup** — how to run, env vars required, dependencies
+5. **Conventions** — TDD approach, naming patterns, style choices
+6. **Current state** — what is done, what is in progress, known issues
+7. **Gotchas** — non-obvious things learned during the session
+
+## Format
+
+```markdown
+# AGENTS — Project Knowledge Base
+_Last updated: <date>_
+
+## Overview
+...
+
+## Tech Stack
+...
+
+## Architecture
+...
+
+## Key Files
+...
+
+## Running the App
+...
+
+## Conventions
+...
+
+## Current State
+...
+
+## Gotchas
+...
+```
+
+Keep it factual, dense, and under 300 lines. Update in-place (overwrite), don't append.
