@@ -36,7 +36,7 @@ defmodule AngivaonguoiWeb.ProductLive.Index do
       <div class="flex items-center justify-between mb-6">
         <h1 class="text-3xl font-bold text-gray-900">Food Products</h1>
         <.link navigate={~p"/upload"} class="btn btn-primary">
-          Upload Product
+          Upload
         </.link>
       </div>
 

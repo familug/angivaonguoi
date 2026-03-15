@@ -42,7 +42,7 @@
           <span class="text-sm text-gray-500 hidden sm:inline">
             <%= @current_user.username %>
           </span>
-          <a href="/upload" class="btn btn-primary btn-sm">Upload Product</a>
+          <a href="/upload" class="btn btn-primary btn-sm">Upload</a>
           <form action={~p"/session"} method="post" class="inline">
             <input type="hidden" name="_method" value="delete" />
             <input type="hidden" name="_csrf_token" value={get_csrf_token()} />

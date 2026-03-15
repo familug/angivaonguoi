@@ -51,10 +51,10 @@ test.describe("Product listing page", () => {
     await expect(page.getByText(PRODUCT2.nameFragment).first()).toBeVisible();
   });
 
-  test("has Upload Product link in navbar", async ({ page }) => {
+  test("has Upload link in navbar", async ({ page }) => {
     await goto(page, "/products");
     await expect(
-      page.getByRole("navigation").getByRole("link", { name: "Upload Product" })
+      page.getByRole("navigation").getByRole("link", { name: "Upload" })
     ).toBeVisible();
   });
 });
@@ -196,14 +196,14 @@ test.describe("Energy display on product detail page", () => {
 test.describe("Upload page", () => {
   test("renders file input and title", async ({ page }) => {
     await goto(page, "/upload");
-    await expect(page.getByText(/upload product image/i)).toBeVisible();
+    await expect(page.getByText(/upload image/i)).toBeVisible();
     await expect(page.locator("input[type=file]")).toBeAttached();
   });
 
-  test("is reachable from navbar Upload Product button", async ({ page }) => {
+  test("is reachable from navbar Upload button", async ({ page }) => {
     await goto(page, "/products");
-    await page.getByRole("navigation").getByRole("link", { name: "Upload Product" }).click();
+    await page.getByRole("navigation").getByRole("link", { name: "Upload" }).click();
     await page.waitForURL(/\/upload/);
-    await expect(page.getByText(/upload product image/i)).toBeVisible();
+    await expect(page.getByText(/upload image/i)).toBeVisible();
   });
 });

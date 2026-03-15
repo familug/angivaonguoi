@@ -109,7 +109,7 @@ defmodule AngivaonguoiWeb.UploadLive do
         &larr; Back to Products
       </.link>
 
-      <h1 class="text-2xl font-bold text-gray-900 mb-6">Upload Product Image</h1>
+      <h1 class="text-2xl font-bold text-gray-900 mb-6">Upload Image</h1>
 
       <div :if={@status == :done and @product} class="alert alert-success mb-6">
         <span>

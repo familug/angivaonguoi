@@ -18,7 +18,7 @@ defmodule AngivaonguoiWeb.ProductLiveTest do
 
     test "renders upload form link", %{conn: conn} do
       {:ok, _view, html} = live(conn, ~p"/products")
-      assert html =~ "Upload Product"
+      assert html =~ "Upload"
     end
   end
 

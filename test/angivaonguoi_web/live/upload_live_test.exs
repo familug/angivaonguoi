@@ -26,7 +26,7 @@ defmodule AngivaonguoiWeb.UploadLiveTest do
     test "renders file upload form", %{conn: conn} do
       {:ok, _view, html} = live(conn, ~p"/upload")
 
-      assert html =~ "Upload Product Image"
+      assert html =~ "Upload Image"
       assert html =~ ~r/input[^>]+type="file"/i
     end
   end
