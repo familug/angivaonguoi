@@ -121,6 +121,89 @@ defmodule Angivaonguoi.GeminiParserTest do
 
       assert {:error, _reason} = GeminiParser.parse_gemini_response(response)
     end
+
+    test "parses energy_kcal_per_100, energy_unit, and volume_ml" do
+      response = %{
+        "candidates" => [
+          %{
+            "content" => %{
+              "parts" => [
+                %{
+                  "text" =>
+                    ~s({"product_name": "Coca-Cola", "barcode": null, "ingredients": [], "categories": ["Soft Drinks"], "energy_kcal_per_100": 42.0, "energy_unit": "100ml", "volume_ml": 330.0})
+                }
+              ]
+            }
+          }
+        ]
+      }
+
+      assert {:ok, result} = GeminiParser.parse_gemini_response(response)
+      assert Decimal.equal?(result.energy_kcal_per_100, Decimal.new("42.00"))
+      assert result.energy_unit == "100ml"
+      assert Decimal.equal?(result.volume_ml, Decimal.new("330.00"))
+    end
+
+    test "energy and volume fields default to nil when absent" do
+      response = %{
+        "candidates" => [
+          %{
+            "content" => %{
+              "parts" => [
+                %{"text" => ~s({"product_name": "Plain Water", "ingredients": [], "categories": []})}
+              ]
+            }
+          }
+        ]
+      }
+
+      assert {:ok, result} = GeminiParser.parse_gemini_response(response)
+      assert is_nil(result.energy_kcal_per_100)
+      assert is_nil(result.energy_unit)
+      assert is_nil(result.volume_ml)
+    end
+
+    test "energy_kcal_per_100 accepts string numeric values" do
+      response = %{
+        "candidates" => [
+          %{
+            "content" => %{
+              "parts" => [
+                %{
+                  "text" =>
+                    ~s({"product_name": "Beer X", "ingredients": [], "categories": [], "energy_kcal_per_100": "46", "energy_unit": "100ml", "volume_ml": null})
+                }
+              ]
+            }
+          }
+        ]
+      }
+
+      assert {:ok, result} = GeminiParser.parse_gemini_response(response)
+      assert Decimal.equal?(result.energy_kcal_per_100, Decimal.new("46"))
+    end
+
+    test "energy fields are nil when set to null in JSON" do
+      response = %{
+        "candidates" => [
+          %{
+            "content" => %{
+              "parts" => [
+                %{
+                  "text" =>
+                    ~s({"product_name": "Mystery Bar", "ingredients": [], "categories": [], "energy_kcal_per_100": null, "energy_unit": null, "volume_ml": null})
+                }
+              ]
+            }
+          }
+        ]
+      }
+
+      assert {:ok, result} = GeminiParser.parse_gemini_response(response)
+      assert is_nil(result.energy_kcal_per_100)
+      assert is_nil(result.energy_unit)
+      assert is_nil(result.volume_ml)
+    end
   end
 
   describe "build_prompt/0" do
@@ -131,6 +214,19 @@ defmodule Angivaonguoi.GeminiParserTest do
       assert prompt =~ "product_name"
       assert prompt =~ "ingredients"
       assert prompt =~ "categories"
+    end
+
+    test "prompt includes energy extraction instructions" do
+      prompt = GeminiParser.build_prompt()
+      assert prompt =~ "energy_kcal_per_100"
+      assert prompt =~ "energy_unit"
+      assert prompt =~ "volume_ml"
+    end
+
+    test "prompt instructs to convert kJ to kcal" do
+      prompt = GeminiParser.build_prompt()
+      assert prompt =~ "kJ"
+      assert prompt =~ "4.184"
     end
   end
 end

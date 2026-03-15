@@ -41,6 +41,50 @@ defmodule Angivaonguoi.CatalogTest do
       assert {:error, %Ecto.Changeset{}} = Catalog.create_product(%{name: ""})
     end
 
+    test "create_product/1 persists energy and volume fields" do
+      attrs = %{
+        name: "Coca-Cola 330ml",
+        energy_kcal_per_100: Decimal.new("42.0"),
+        energy_unit: "100ml",
+        volume_ml: Decimal.new("330")
+      }
+
+      assert {:ok, product} = Catalog.create_product(attrs)
+      assert Decimal.equal?(product.energy_kcal_per_100, Decimal.new("42.0"))
+      assert product.energy_unit == "100ml"
+      assert Decimal.equal?(product.volume_ml, Decimal.new("330"))
+    end
+
+    test "create_product_with_ingredients_and_categories/4 persists energy and volume extras" do
+      extra = %{
+        energy_kcal_per_100: Decimal.new("46.0"),
+        energy_unit: "100ml",
+        volume_ml: Decimal.new("500"),
+        barcode: "4890008100309"
+      }
+
+      assert {:ok, product} =
+               Catalog.create_product_with_ingredients_and_categories(
+                 "Pocari Sweat 500ml",
+                 ["Water", "Sugar"],
+                 ["Sports Drinks"],
+                 extra
+               )
+
+      fetched = Catalog.get_product!(product.id)
+      assert Decimal.equal?(fetched.energy_kcal_per_100, Decimal.new("46.0"))
+      assert fetched.energy_unit == "100ml"
+      assert Decimal.equal?(fetched.volume_ml, Decimal.new("500"))
+      assert fetched.barcode == "4890008100309"
+    end
+
+    test "energy and volume fields default to nil" do
+      assert {:ok, product} = Catalog.create_product(%{name: "Plain Cracker"})
+      assert is_nil(product.energy_kcal_per_100)
+      assert is_nil(product.energy_unit)
+      assert is_nil(product.volume_ml)
+    end
+
     test "create_product/1 enforces unique name" do
       assert {:ok, _} = Catalog.create_product(%{name: "Pringles"})
       assert {:error, changeset} = Catalog.create_product(%{name: "Pringles"})

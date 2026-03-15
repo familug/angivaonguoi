@@ -111,6 +111,63 @@ defmodule AngivaonguoiWeb.ProductLiveTest do
       refute html =~ "Delete Product"
     end
 
+    test "shows energy per 100ml when product has energy info" do
+      {:ok, product} =
+        Catalog.create_product(%{
+          name: "Pocari Sweat",
+          energy_kcal_per_100: Decimal.new("25.0"),
+          energy_unit: "100ml",
+          volume_ml: nil
+        })
+
+      {:ok, _view, html} = live(build_conn(), ~p"/products/#{product.id}")
+
+      assert html =~ "25"
+      assert html =~ "kcal"
+      assert html =~ "100ml"
+    end
+
+    test "shows total energy when both energy and volume are present" do
+      {:ok, product} =
+        Catalog.create_product(%{
+          name: "Coca-Cola 330ml",
+          energy_kcal_per_100: Decimal.new("42.0"),
+          energy_unit: "100ml",
+          volume_ml: Decimal.new("330")
+        })
+
+      {:ok, _view, html} = live(build_conn(), ~p"/products/#{product.id}")
+
+      # 42.0 * 330 / 100 = 138.6
+      assert html =~ "138.6"
+      assert html =~ "330ml"
+    end
+
+    test "does not show energy section when energy info is absent" do
+      {:ok, product} = Catalog.create_product(%{name: "Plain Cracker"})
+
+      {:ok, _view, html} = live(build_conn(), ~p"/products/#{product.id}")
+
+      refute html =~ "kcal"
+    end
+
+    test "shows energy but not total energy when volume is absent" do
+      {:ok, product} =
+        Catalog.create_product(%{
+          name: "Energy Bar",
+          energy_kcal_per_100: Decimal.new("380.0"),
+          energy_unit: "100g",
+          volume_ml: nil
+        })
+
+      {:ok, _view, html} = live(build_conn(), ~p"/products/#{product.id}")
+
+      assert html =~ "380"
+      assert html =~ "100g"
+      refute html =~ "per nil"
+      refute html =~ "package"
+    end
+
     test "admin can delete a product", %{conn: conn} do
       {:ok, admin} =
         Accounts.register_user(%{email: "admin@test.com", username: "admin", password: "pass123"})

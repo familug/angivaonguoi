@@ -149,6 +149,47 @@ test.describe("Search by ingredient", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Energy / nutrition display
+// ---------------------------------------------------------------------------
+
+// Product seeded via: mix run -e '...' with energy_kcal_per_100=42, volume_ml=330
+const ENERGY_PRODUCT = {
+  id: 7,
+  name: "Coca-Cola 330ml (test)",
+  energyPer100: "42",
+  totalEnergy: "138.6",
+  volumeMl: "330",
+  unit: "100ml",
+};
+
+test.describe("Energy display on product detail page", () => {
+  test("shows energy per 100ml stat card", async ({ page }) => {
+    await goto(page, `/products/${ENERGY_PRODUCT.id}`);
+    await expect(page.getByText(ENERGY_PRODUCT.energyPer100)).toBeVisible();
+    await expect(page.getByText(ENERGY_PRODUCT.unit)).toBeVisible();
+  });
+
+  test("shows total energy calculated from volume", async ({ page }) => {
+    await goto(page, `/products/${ENERGY_PRODUCT.id}`);
+    // 42 kcal/100ml × 330 ml = 138.6 kcal
+    await expect(page.getByText(ENERGY_PRODUCT.totalEnergy)).toBeVisible();
+    await expect(page.getByText(`${ENERGY_PRODUCT.volumeMl}ml`).first()).toBeVisible();
+  });
+
+  test("energy labels include 'kcal' unit", async ({ page }) => {
+    await goto(page, `/products/${ENERGY_PRODUCT.id}`);
+    const kcalLabels = page.getByText("kcal", { exact: false });
+    await expect(kcalLabels.first()).toBeVisible();
+  });
+
+  test("products without energy data do not show energy section", async ({ page }) => {
+    // PRODUCT (id=1) was uploaded before energy feature — has no energy data
+    await goto(page, `/products/${PRODUCT.id}`);
+    await expect(page.getByText("kcal", { exact: false })).not.toBeVisible();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Upload page
 // ---------------------------------------------------------------------------
 
