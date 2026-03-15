@@ -26,7 +26,7 @@ defmodule AngivaonguoiWeb.ProductLive.Show do
       title: "#{product.name} — FoodCheck",
       description: description,
       url: canonical_url,
-      image: product.image_url && absolute_url(host, product.image_url)
+      image: (List.first(display_images(product)) || product.image_url) && absolute_url(host, List.first(display_images(product)) || product.image_url)
     }
 
     {:ok, assign(socket, product: product, amounts: amounts, page_og: og, page_title: product.name)}
@@ -73,12 +73,14 @@ defmodule AngivaonguoiWeb.ProductLive.Show do
 
       <div class="card bg-base-100 border border-base-200 shadow">
         <div class="card-body space-y-6">
-          <img
-            :if={@product.image_url}
-            src={@product.image_url}
-            alt={@product.name}
-            class="w-full max-h-72 object-contain rounded-lg bg-base-200 mb-2"
-          />
+          <div :if={@product.image_url} class={if length(@product.image_urls || []) > 1, do: "grid grid-cols-2 gap-2 mb-2", else: ""}>
+            <img
+              :for={url <- display_images(@product)}
+              src={url}
+              alt={@product.name}
+              class="w-full max-h-72 object-contain rounded-lg bg-base-200"
+            />
+          </div>
 
           <div>
             <h1 class="text-2xl font-bold text-gray-900"><%= @product.name %></h1>
@@ -156,6 +158,10 @@ defmodule AngivaonguoiWeb.ProductLive.Show do
     </div>
     """
   end
+
+  defp display_images(%{image_urls: urls}) when is_list(urls) and urls != [], do: urls
+  defp display_images(%{image_url: url}) when is_binary(url), do: [url]
+  defp display_images(_), do: []
 
   defp amount_label(amounts, ingredient_id) do
     case Map.get(amounts, ingredient_id) do

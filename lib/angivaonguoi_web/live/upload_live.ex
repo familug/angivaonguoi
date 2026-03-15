@@ -4,6 +4,7 @@ defmodule AngivaonguoiWeb.UploadLive do
   alias Angivaonguoi.ImageProcessor
 
   @max_file_size 10 * 1024 * 1024
+  @max_images 3
 
   @impl true
   def mount(_params, _session, socket) do
@@ -13,17 +14,22 @@ defmodule AngivaonguoiWeb.UploadLive do
      |> assign(:error, nil)
      |> assign(:product, nil)
      |> assign(:duplicate, nil)
+     |> assign(:max_images, @max_images)
      |> allow_upload(:product_image,
        accept: ~w(.jpg .jpeg .png .webp),
-       max_entries: 1,
+       max_entries: @max_images,
        max_file_size: @max_file_size,
        auto_upload: true,
        progress: &handle_progress/3
      )}
   end
 
-  defp handle_progress(:product_image, entry, socket) do
-    if entry.done? do
+  defp handle_progress(:product_image, _entry, socket) do
+    all_done? =
+      socket.assigns.uploads.product_image.entries != [] and
+        Enum.all?(socket.assigns.uploads.product_image.entries, & &1.done?)
+
+    if all_done? do
       process_upload(socket)
     else
       {:noreply, socket}
@@ -92,21 +98,21 @@ defmodule AngivaonguoiWeb.UploadLive do
     else
       lv = self()
 
-      consume_uploaded_entries(socket, :product_image, fn %{path: tmp_path}, entry ->
-        original = File.read!(tmp_path)
-        mime = entry.client_type
-
-        # Resize once here — the resized binary is both saved to disk and sent
-        # to Gemini, so we never store the original multi-MB file.
-        {resized, resized_mime} = ImageProcessor.resize_image(original, mime)
-        image_url = persist_image(resized, resized_mime)
-
-        Task.start(fn ->
-          result = ImageProcessor.process_image(resized, resized_mime, image_url)
-          send(lv, {:image_processed, result})
+      images_and_urls =
+        consume_uploaded_entries(socket, :product_image, fn %{path: tmp_path}, entry ->
+          original = File.read!(tmp_path)
+          mime = entry.client_type
+          {resized, resized_mime} = ImageProcessor.resize_image(original, mime)
+          image_url = persist_image(resized, resized_mime)
+          {:ok, {resized, resized_mime, image_url}}
         end)
 
-        {:ok, :started}
+      images = Enum.map(images_and_urls, fn {bin, mime, _url} -> {bin, mime} end)
+      image_urls = Enum.map(images_and_urls, fn {_bin, _mime, url} -> url end)
+
+      Task.start(fn ->
+        result = ImageProcessor.process_images(images, image_urls)
+        send(lv, {:image_processed, result})
       end)
 
       {:noreply, assign(socket, :status, :processing)}
@@ -175,7 +181,8 @@ defmodule AngivaonguoiWeb.UploadLive do
                   <span class="text-primary font-semibold">Click to upload</span>
                   or drag and drop
                 </p>
-                <p class="text-xs text-gray-400">JPG, PNG, WEBP up to 10MB</p>
+                <p class="text-xs text-gray-400">Up to <%= @max_images %> photos · JPG, PNG, WEBP up to 10MB each</p>
+                <p class="text-xs text-gray-400 italic">Tip: for bottles, upload front + ingredient panel as separate photos</p>
               </div>
             </label>
           </div>
@@ -207,7 +214,7 @@ defmodule AngivaonguoiWeb.UploadLive do
 
           <div :if={@status == :processing} class="flex items-center justify-center gap-3 py-2 text-gray-600">
             <span class="loading loading-spinner loading-sm"></span>
-            Analyzing image with AI...
+            Analyzing image<%= if length(@uploads.product_image.entries) > 1, do: "s", else: "" %> with AI...
           </div>
         </div>
       </form>
@@ -225,6 +232,6 @@ defmodule AngivaonguoiWeb.UploadLive do
 
   defp error_to_string(:too_large), do: "File is too large (max 10MB)"
   defp error_to_string(:not_accepted), do: "Unsupported file type. Use JPG, PNG, or WEBP"
-  defp error_to_string(:too_many_files), do: "Only one file allowed at a time"
+  defp error_to_string(:too_many_files), do: "Only #{@max_images} files allowed at a time"
   defp error_to_string(err), do: "Upload error: #{inspect(err)}"
 end

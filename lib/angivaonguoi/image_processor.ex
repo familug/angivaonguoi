@@ -16,17 +16,15 @@ defmodule Angivaonguoi.ImageProcessor do
   @gemini_base "https://generativelanguage.googleapis.com/v1beta/models"
 
   @doc """
-  Given a raw binary image and its MIME type, calls Gemini to extract product
-  information and saves it to the database.
+  Given one or more `{binary, mime_type}` image tuples and their persisted URLs,
+  calls Gemini with all images in a single request and saves the result.
 
   Returns `{:ok, product}` or `{:error, reason}`.
   """
-  def process_image(image_binary, mime_type \\ "image/jpeg", image_url \\ nil) do
-    # resize_image is called by UploadLive before persisting, so the binary
-    # arriving here is already small. Call again only as a safety net.
-    {image_binary, mime_type} = do_resize_image(image_binary, mime_type)
+  def process_images(images, image_urls) when is_list(images) and is_list(image_urls) do
+    resized = Enum.map(images, fn {binary, mime} -> do_resize_image(binary, mime) end)
 
-    with {:ok, {response, model}} <- call_gemini_with_fallback(image_binary, mime_type),
+    with {:ok, {response, model}} <- call_gemini_with_fallback_multi(resized),
          {:ok, %{name: name, ingredients: ingredients, categories: categories, barcode: barcode,
                   energy_kcal_per_100: energy_kcal_per_100, energy_unit: energy_unit,
                   volume_ml: volume_ml}} <-
@@ -36,7 +34,9 @@ defmodule Angivaonguoi.ImageProcessor do
              name,
              ingredients,
              categories,
-             %{image_url: image_url, barcode: barcode,
+             %{image_url: List.first(image_urls),
+               image_urls: image_urls,
+               barcode: barcode,
                energy_kcal_per_100: energy_kcal_per_100,
                energy_unit: energy_unit,
                volume_ml: volume_ml,
@@ -49,13 +49,18 @@ defmodule Angivaonguoi.ImageProcessor do
     end
   end
 
+  @doc "Convenience wrapper for a single image (backwards compat)."
+  def process_image(image_binary, mime_type \\ "image/jpeg", image_url \\ nil) do
+    process_images([{image_binary, mime_type}], [image_url])
+  end
+
   # ---------------------------------------------------------------------------
   # Private helpers
   # ---------------------------------------------------------------------------
 
-  defp call_gemini_with_fallback(image_binary, mime_type) do
+  defp call_gemini_with_fallback_multi(images) do
     Enum.reduce_while(@gemini_models, {:error, "No models available"}, fn model, _acc ->
-      case call_gemini(model, image_binary, mime_type) do
+      case call_gemini_multi(model, images) do
         {:ok, response} ->
           {:halt, {:ok, {response, model}}}
 
@@ -68,18 +73,19 @@ defmodule Angivaonguoi.ImageProcessor do
     end)
   end
 
-  defp call_gemini(model, image_binary, mime_type) do
+  defp call_gemini_multi(model, images) do
     api_key = Application.fetch_env!(:angivaonguoi, :gemini_api_key)
     url = "#{@gemini_base}/#{model}:generateContent?key=#{api_key}"
-    encoded = Base.encode64(image_binary)
+
+    image_parts =
+      Enum.map(images, fn {binary, mime} ->
+        %{"inline_data" => %{"mime_type" => mime, "data" => Base.encode64(binary)}}
+      end)
 
     body = %{
       "contents" => [
         %{
-          "parts" => [
-            %{"text" => GeminiParser.build_prompt()},
-            %{"inline_data" => %{"mime_type" => mime_type, "data" => encoded}}
-          ]
+          "parts" => [%{"text" => GeminiParser.build_prompt()}] ++ image_parts
         }
       ],
       "generationConfig" => %{"temperature" => 0.1, "maxOutputTokens" => 4096}
