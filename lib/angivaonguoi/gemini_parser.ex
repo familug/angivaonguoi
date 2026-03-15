@@ -63,7 +63,7 @@ defmodule Angivaonguoi.GeminiParser do
 
     3. INGREDIENTS LIST
        - Find the section explicitly labelled "Ingredients", "Thành phần", or equivalent.
-       - DO NOT read from the nutrition facts table — that is a different section.
+       - Read ONLY from that ingredients section — do NOT pull names from the nutrition facts table, which is a separate section listing nutrients like protein, fat, sodium, etc.
        - Copy each ingredient name EXACTLY as printed. Do NOT simplify, merge, or paraphrase.
          Example: if the label lists "Đường HFCS" and "Đường mía" as separate items, they are TWO separate entries. Never merge them into "Đường".
        - Each ingredient must have:
