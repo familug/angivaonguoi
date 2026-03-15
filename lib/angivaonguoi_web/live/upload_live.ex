@@ -111,7 +111,15 @@ defmodule AngivaonguoiWeb.UploadLive do
       image_urls = Enum.map(images_and_urls, fn {_bin, _mime, url} -> url end)
 
       Task.start(fn ->
-        result = ImageProcessor.process_images(images, image_urls)
+        result =
+          try do
+            ImageProcessor.process_images(images, image_urls)
+          rescue
+            e -> {:error, Exception.message(e)}
+          catch
+            :exit, reason -> {:error, "Processing crashed: #{inspect(reason)}"}
+          end
+
         send(lv, {:image_processed, result})
       end)
 

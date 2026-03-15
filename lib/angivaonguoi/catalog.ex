@@ -36,46 +36,54 @@ defmodule Angivaonguoi.Catalog do
   def create_product(attrs) do
     tmp_slug = "tmp-#{System.unique_integer([:positive, :monotonic])}"
 
-    with {:ok, product} <-
-           %Product{}
-           |> Product.changeset(Map.put(attrs, :slug, tmp_slug))
-           |> Repo.insert()
-           |> handle_duplicate(attrs) do
-      slug = build_product_slug(product)
+    result =
+      with {:ok, product} <-
+             %Product{}
+             |> Product.changeset(Map.put(attrs, :slug, tmp_slug))
+             |> Repo.insert() do
+        slug = build_product_slug(product)
 
-      product
-      |> Product.changeset(%{slug: slug})
-      |> Repo.update()
-      |> handle_duplicate(attrs)
+        product
+        |> Product.changeset(%{slug: slug})
+        |> Repo.update()
+      end
+
+    # resolve_duplicate runs a SELECT — must be outside any open transaction.
+    # When create_product is called directly (no surrounding transaction), this
+    # is safe. When called from within create_product_with_ingredients_and_categories,
+    # we deliberately do NOT call resolve_duplicate here; the outer function does
+    # it after the transaction closes.
+    case Repo.in_transaction?() do
+      false -> resolve_duplicate(result, attrs)
+      true -> result
     end
   end
 
-  defp handle_duplicate({:error, %Ecto.Changeset{} = cs}, attrs) do
-    errors = cs.errors
-
-    if Keyword.has_key?(errors, :name) or Keyword.has_key?(errors, :slug) do
-      # Try to find the existing product by name or by the barcode-derived slug
-      name = Map.get(attrs, :name) || Map.get(attrs, "name")
-      barcode = Map.get(attrs, :barcode) || Map.get(attrs, "barcode")
-
-      existing =
-        cond do
-          name -> Repo.get_by(Product, name: name)
-          barcode -> Repo.one(from p in Product, where: p.barcode == ^barcode, limit: 1)
-          true -> nil
-        end
-
-      if existing do
-        {:error, {:duplicate, existing}}
-      else
-        {:error, cs}
+  defp resolve_duplicate({:error, %Ecto.Changeset{} = cs}, attrs) do
+    if Keyword.has_key?(cs.errors, :name) or Keyword.has_key?(cs.errors, :slug) do
+      case find_duplicate(attrs) do
+        nil -> {:error, cs}
+        existing -> {:error, {:duplicate, existing}}
       end
     else
       {:error, cs}
     end
   end
 
-  defp handle_duplicate(result, _attrs), do: result
+  defp resolve_duplicate(result, _attrs), do: result
+
+  # Runs OUTSIDE any transaction — looks up the existing product by name or barcode
+  # after a unique constraint failure so we can return a friendly duplicate error.
+  defp find_duplicate(attrs) do
+    name = Map.get(attrs, :name) || Map.get(attrs, "name")
+    barcode = Map.get(attrs, :barcode) || Map.get(attrs, "barcode")
+
+    cond do
+      name -> Repo.get_by(Product, name: name)
+      barcode -> Repo.one(from p in Product, where: p.barcode == ^barcode, limit: 1)
+      true -> nil
+    end
+  end
 
   def delete_product(%Product{} = product) do
     Repo.delete(product)
@@ -88,15 +96,24 @@ defmodule Angivaonguoi.Catalog do
 
   def create_product_with_ingredients_and_categories(name, ingredients, category_names, extra \\ %{})
       when is_binary(name) and is_list(ingredients) and is_list(category_names) do
-    Repo.transaction(fn ->
-      with {:ok, product} <- create_product(Map.merge(%{name: name}, extra)),
-           :ok <- attach_ingredients(product, ingredients),
-           :ok <- attach_categories(product, category_names) do
-        product
-      else
-        {:error, reason} -> Repo.rollback(reason)
-      end
-    end)
+    attrs = Map.merge(%{name: name}, extra)
+
+    result =
+      Repo.transaction(fn ->
+        with {:ok, product} <- create_product(attrs),
+             :ok <- attach_ingredients(product, ingredients),
+             :ok <- attach_categories(product, category_names) do
+          product
+        else
+          {:error, reason} -> Repo.rollback(reason)
+        end
+      end)
+
+    # Transaction is now closed — safe to query DB for duplicate resolution.
+    case result do
+      {:error, %Ecto.Changeset{} = cs} -> resolve_duplicate({:error, cs}, attrs)
+      other -> other
+    end
   end
 
   @doc """

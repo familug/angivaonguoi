@@ -216,5 +216,16 @@ defmodule Angivaonguoi.CatalogTest do
       assert found.id == existing.id
       assert found.slug == existing.slug
     end
+
+    test "create_product_with_ingredients_and_categories returns duplicate when product name already exists" do
+      {:ok, existing} =
+        Catalog.create_product_with_ingredients_and_categories("Pepsi", ["Sugar", "Water"], ["Soft Drinks"])
+
+      result =
+        Catalog.create_product_with_ingredients_and_categories("Pepsi", ["Sugar", "Caramel"], ["Soft Drinks"])
+
+      assert {:error, {:duplicate, found}} = result
+      assert found.id == existing.id
+    end
   end
 end
