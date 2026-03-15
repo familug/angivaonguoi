@@ -24,7 +24,9 @@ defmodule Angivaonguoi.ImageProcessor do
   Returns `{:ok, product}` or `{:error, reason}`.
   """
   def process_image(image_binary, mime_type \\ "image/jpeg", image_url \\ nil) do
-    {image_binary, mime_type} = resize_image(image_binary, mime_type)
+    # resize_image is called by UploadLive before persisting, so the binary
+    # arriving here is already small. Call again only as a safety net.
+    {image_binary, mime_type} = do_resize_image(image_binary, mime_type)
 
     with {:ok, response} <- call_gemini_with_fallback(image_binary, mime_type),
          {:ok, %{name: name, ingredients: ingredients, categories: categories, barcode: barcode,
@@ -115,11 +117,19 @@ defmodule Angivaonguoi.ImageProcessor do
     get_in(body, ["error", "message"]) || inspect(body)
   end
 
+  @doc """
+  Resize the longest edge to ≤ 1024px and re-encode as JPEG quality ~75.
+  Returns `{resized_binary, "image/jpeg"}`.
+  Falls back to `{original_binary, original_mime}` if ffmpeg is unavailable.
+  Public so UploadLive can resize before persisting to disk.
+  """
+  def resize_image(binary, mime_type), do: do_resize_image(binary, mime_type)
+
   # Resize the longest edge to ≤ 1024px and re-encode as JPEG quality ~75.
   # Reduces a typical 4 MB phone photo to ~100–200 KB before base64 encoding,
   # cutting Gemini token usage and latency significantly.
   # Falls back to the original binary if ffmpeg is unavailable or fails.
-  defp resize_image(binary, mime_type) do
+  defp do_resize_image(binary, mime_type) do
     tmp_in = Path.join(System.tmp_dir!(), "fcheck_in_#{:rand.uniform(999_999)}.jpg")
     tmp_out = Path.join(System.tmp_dir!(), "fcheck_out_#{:rand.uniform(999_999)}.jpg")
 

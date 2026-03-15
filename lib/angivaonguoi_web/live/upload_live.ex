@@ -81,12 +81,16 @@ defmodule AngivaonguoiWeb.UploadLive do
       lv = self()
 
       consume_uploaded_entries(socket, :product_image, fn %{path: tmp_path}, entry ->
-        binary = File.read!(tmp_path)
+        original = File.read!(tmp_path)
         mime = entry.client_type
-        image_url = persist_image(tmp_path, entry)
+
+        # Resize once here — the resized binary is both saved to disk and sent
+        # to Gemini, so we never store the original multi-MB file.
+        {resized, resized_mime} = ImageProcessor.resize_image(original, mime)
+        image_url = persist_image(resized, resized_mime)
 
         Task.start(fn ->
-          result = ImageProcessor.process_image(binary, mime, image_url)
+          result = ImageProcessor.process_image(resized, resized_mime, image_url)
           send(lv, {:image_processed, result})
         end)
 
@@ -187,11 +191,11 @@ defmodule AngivaonguoiWeb.UploadLive do
     """
   end
 
-  defp persist_image(tmp_path, entry) do
-    ext = Path.extname(entry.client_name) |> String.downcase()
-    filename = "#{System.unique_integer([:positive])}_#{:erlang.phash2(entry.uuid)}#{ext}"
+  defp persist_image(binary, mime) do
+    ext = if mime == "image/jpeg", do: ".jpg", else: ".webp"
+    filename = "#{System.unique_integer([:positive])}_#{:erlang.phash2(binary)}#{ext}"
     dest = Path.join([:code.priv_dir(:angivaonguoi), "static", "uploads", filename])
-    File.cp!(tmp_path, dest)
+    File.write!(dest, binary)
     "/uploads/#{filename}"
   end
 
