@@ -28,7 +28,7 @@ defmodule Angivaonguoi.ImageProcessor do
     # arriving here is already small. Call again only as a safety net.
     {image_binary, mime_type} = do_resize_image(image_binary, mime_type)
 
-    with {:ok, response} <- call_gemini_with_fallback(image_binary, mime_type),
+    with {:ok, {response, model}} <- call_gemini_with_fallback(image_binary, mime_type),
          {:ok, %{name: name, ingredients: ingredients, categories: categories, barcode: barcode,
                   energy_kcal_per_100: energy_kcal_per_100, energy_unit: energy_unit,
                   volume_ml: volume_ml}} <-
@@ -41,7 +41,8 @@ defmodule Angivaonguoi.ImageProcessor do
              %{image_url: image_url, barcode: barcode,
                energy_kcal_per_100: energy_kcal_per_100,
                energy_unit: energy_unit,
-               volume_ml: volume_ml}
+               volume_ml: volume_ml,
+               gemini_model: model}
            ) do
       {:ok, product}
     end
@@ -55,7 +56,7 @@ defmodule Angivaonguoi.ImageProcessor do
     Enum.reduce_while(@gemini_models, {:error, "No models available"}, fn model, _acc ->
       case call_gemini(model, image_binary, mime_type) do
         {:ok, response} ->
-          {:halt, {:ok, response}}
+          {:halt, {:ok, {response, model}}}
 
         {:error, :rate_limited, retry_after} ->
           {:cont, {:error, "Quota exceeded on all models. Retry after #{retry_after}."}}

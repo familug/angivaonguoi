@@ -84,6 +84,34 @@ defmodule AngivaonguoiWeb.ProductLiveTest do
       assert html =~ ~r|href="/ingredients/[0-9]+"|
     end
 
+    test "admin sees gemini model badge when product has model info", %{conn: conn} do
+      {:ok, admin} =
+        Accounts.register_user(%{email: "admin@test.com", username: "admin", password: "pass123"})
+
+      conn = init_test_session(conn, %{"user_id" => admin.id})
+
+      {:ok, product} =
+        Catalog.create_product(%{name: "Model Product", gemini_model: "gemini-2.5-flash"})
+
+      {:ok, _view, html} = live(conn, ~p"/products/#{product.slug}")
+      assert html =~ "gemini-2.5-flash"
+    end
+
+    test "non-admin does not see gemini model badge", %{conn: conn} do
+      Accounts.register_user(%{email: "admin@test.com", username: "admin", password: "pass123"})
+
+      {:ok, user} =
+        Accounts.register_user(%{email: "user@test.com", username: "user2", password: "pass123"})
+
+      conn = init_test_session(conn, %{"user_id" => user.id})
+
+      {:ok, product} =
+        Catalog.create_product(%{name: "Model Product 2", gemini_model: "gemini-2.5-flash"})
+
+      {:ok, _view, html} = live(conn, ~p"/products/#{product.slug}")
+      refute html =~ "gemini-2.5-flash"
+    end
+
     test "admin sees delete button", %{conn: conn} do
       {:ok, admin} =
         Accounts.register_user(%{email: "admin@test.com", username: "admin", password: "pass123"})

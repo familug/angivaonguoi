@@ -87,6 +87,13 @@ defmodule AngivaonguoiWeb.ProductLive.Show do
               Barcode: <%= @product.barcode %>
             </div>
 
+            <div :if={@current_user && @current_user.is_admin && @product.gemini_model}
+                 class="mt-1">
+              <span class="badge badge-ghost badge-sm font-mono text-xs opacity-60">
+                AI: <%= @product.gemini_model %>
+              </span>
+            </div>
+
             <div :if={@product.energy_kcal_per_100} class="mt-3 flex flex-wrap gap-3">
               <div class="stat bg-base-200 rounded-box px-4 py-2 min-w-0">
                 <div class="stat-title text-xs">Energy</div>
