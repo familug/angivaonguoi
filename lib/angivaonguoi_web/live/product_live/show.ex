@@ -29,7 +29,7 @@ defmodule AngivaonguoiWeb.ProductLive.Show do
       image: product.image_url && absolute_url(host, product.image_url)
     }
 
-    {:ok, assign(socket, product: product, amounts: amounts, page_og: og)}
+    {:ok, assign(socket, product: product, amounts: amounts, page_og: og, page_title: product.name)}
   end
 
   @impl true
