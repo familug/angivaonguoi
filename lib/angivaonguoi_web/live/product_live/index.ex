@@ -40,27 +40,6 @@ defmodule AngivaonguoiWeb.ProductLive.Index do
         </.link>
       </div>
 
-      <div :if={@categories != []} class="flex flex-wrap gap-2 mb-8">
-        <.link
-          patch={~p"/products"}
-          class={["badge badge-lg py-3 px-4 cursor-pointer transition-colors",
-            if(@selected_category == nil, do: "badge-primary", else: "badge-outline")]}
-        >
-          All
-        </.link>
-        <.link
-          :for={category <- @categories}
-          patch={~p"/products?category=#{category.id}"}
-          class={["badge badge-lg py-3 px-4 cursor-pointer transition-colors",
-            if(@selected_category && @selected_category.id == category.id,
-              do: "badge-primary",
-              else: "badge-outline"
-            )]}
-        >
-          <%= category.name %>
-        </.link>
-      </div>
-
       <div :if={@products == []} class="text-center py-20 text-gray-500">
         <p class="text-xl">No products yet.</p>
         <p class="mt-2">
@@ -84,8 +63,33 @@ defmodule AngivaonguoiWeb.ProductLive.Index do
           </figure>
           <div class="card-body">
             <h2 class="card-title text-base"><%= product.name %></h2>
-            <p class="text-sm text-gray-500">Click to view ingredients</p>
+            <div class="flex items-center gap-2 mt-1">
+              <p class="text-sm text-gray-500 flex-1">Click to view ingredients</p>
+              <span :if={product.barcode} title="Has barcode" class="text-base">🔖</span>
+              <span :if={product.energy_kcal_per_100} title="Has calorie info" class="text-base">🔥</span>
+            </div>
           </div>
+        </.link>
+      </div>
+
+      <div :if={@categories != []} class="flex flex-wrap gap-2 mt-8">
+        <.link
+          patch={~p"/products"}
+          class={["badge badge-lg py-3 px-4 cursor-pointer transition-colors",
+            if(@selected_category == nil, do: "badge-primary", else: "badge-outline")]}
+        >
+          All
+        </.link>
+        <.link
+          :for={category <- @categories}
+          patch={~p"/products?category=#{category.id}"}
+          class={["badge badge-lg py-3 px-4 cursor-pointer transition-colors",
+            if(@selected_category && @selected_category.id == category.id,
+              do: "badge-primary",
+              else: "badge-outline"
+            )]}
+        >
+          <%= category.name %>
         </.link>
       </div>
     </div>
