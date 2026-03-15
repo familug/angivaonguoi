@@ -9,7 +9,7 @@ defmodule Angivaonguoi.Catalog do
   # ---------------------------------------------------------------------------
 
   def list_products do
-    Repo.all(from p in Product, order_by: [asc: p.name])
+    Repo.all(from p in Product, order_by: [desc: p.id])
   end
 
   def get_product!(id), do: Repo.get!(Product, id)
@@ -110,7 +110,7 @@ defmodule Angivaonguoi.Catalog do
       join: pc in ProductCategory,
       on: pc.product_id == p.id,
       where: pc.category_id == ^category_id,
-      order_by: [asc: p.name],
+      order_by: [desc: p.id],
       distinct: true
     )
     |> Repo.all()
