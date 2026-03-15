@@ -110,7 +110,7 @@ defmodule AngivaonguoiWeb.UploadLive do
       <div :if={@status == :done and @product} class="alert alert-success mb-6">
         <span>
           Product "<%= @product.name %>" added successfully!
-          <.link navigate={~p"/products/#{@product.id}"} class="link font-semibold ml-1">
+          <.link navigate={~p"/products/#{@product.slug}"} class="link font-semibold ml-1">
             View product &rarr;
           </.link>
         </span>
