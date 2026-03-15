@@ -25,14 +25,19 @@ defmodule Angivaonguoi.ImageProcessor do
   """
   def process_image(image_binary, mime_type \\ "image/jpeg", image_url \\ nil) do
     with {:ok, response} <- call_gemini_with_fallback(image_binary, mime_type),
-         {:ok, %{name: name, ingredients: ingredients, categories: categories, barcode: barcode}} <-
+         {:ok, %{name: name, ingredients: ingredients, categories: categories, barcode: barcode,
+                  energy_kcal_per_100: energy_kcal_per_100, energy_unit: energy_unit,
+                  volume_ml: volume_ml}} <-
            GeminiParser.parse_gemini_response(response),
          {:ok, product} <-
            Catalog.create_product_with_ingredients_and_categories(
              name,
              ingredients,
              categories,
-             %{image_url: image_url, barcode: barcode}
+             %{image_url: image_url, barcode: barcode,
+               energy_kcal_per_100: energy_kcal_per_100,
+               energy_unit: energy_unit,
+               volume_ml: volume_ml}
            ) do
       {:ok, product}
     end

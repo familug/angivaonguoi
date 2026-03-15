@@ -9,6 +9,9 @@ defmodule Angivaonguoi.Catalog.Product do
     field :image_url, :string
     field :raw_text, :string
     field :barcode, :string
+    field :energy_kcal_per_100, :decimal
+    field :energy_unit, :string
+    field :volume_ml, :decimal
 
     many_to_many :ingredients, Ingredient,
       join_through: ProductIngredient,
@@ -24,7 +27,7 @@ defmodule Angivaonguoi.Catalog.Product do
   @doc false
   def changeset(product, attrs) do
     product
-    |> cast(attrs, [:name, :image_url, :raw_text, :barcode])
+    |> cast(attrs, [:name, :image_url, :raw_text, :barcode, :energy_kcal_per_100, :energy_unit, :volume_ml])
     |> validate_required([:name])
     |> validate_length(:name, min: 1, max: 255)
     |> unique_constraint(:name)

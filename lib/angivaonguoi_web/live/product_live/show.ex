@@ -59,6 +59,23 @@ defmodule AngivaonguoiWeb.ProductLive.Show do
               Barcode: <%= @product.barcode %>
             </div>
 
+            <div :if={@product.energy_kcal_per_100} class="mt-3 flex flex-wrap gap-3">
+              <div class="stat bg-base-200 rounded-box px-4 py-2 min-w-0">
+                <div class="stat-title text-xs">Energy</div>
+                <div class="stat-value text-lg text-orange-500">
+                  <%= @product.energy_kcal_per_100 %> kcal
+                </div>
+                <div class="stat-desc">per <%= @product.energy_unit || "100ml" %></div>
+              </div>
+              <div :if={total_energy(@product)} class="stat bg-base-200 rounded-box px-4 py-2 min-w-0">
+                <div class="stat-title text-xs">Total energy</div>
+                <div class="stat-value text-lg text-orange-500">
+                  <%= total_energy(@product) %> kcal
+                </div>
+                <div class="stat-desc">per <%= @product.volume_ml %>ml package</div>
+              </div>
+            </div>
+
             <div :if={@product.categories != []} class="flex flex-wrap gap-2 mt-3">
               <.link
                 :for={category <- @product.categories}
@@ -105,4 +122,15 @@ defmodule AngivaonguoiWeb.ProductLive.Show do
       _ -> nil
     end
   end
+
+  # Returns total kcal for the whole package, or nil if data is missing.
+  # energy_kcal_per_100 is per 100ml (or 100g), volume_ml is the package size.
+  defp total_energy(%{energy_kcal_per_100: e, volume_ml: v})
+       when not is_nil(e) and not is_nil(v) do
+    Decimal.mult(e, v)
+    |> Decimal.div(Decimal.new(100))
+    |> Decimal.round(1)
+  end
+
+  defp total_energy(_), do: nil
 end

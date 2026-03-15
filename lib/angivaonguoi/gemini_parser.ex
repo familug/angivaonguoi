@@ -27,7 +27,10 @@ defmodule Angivaonguoi.GeminiParser do
          name: name,
          ingredients: ingredients,
          categories: categories,
-         barcode: fetch_barcode(decoded)
+         barcode: fetch_barcode(decoded),
+         energy_kcal_per_100: fetch_decimal(decoded, "energy_kcal_per_100"),
+         energy_unit: fetch_string(decoded, "energy_unit"),
+         volume_ml: fetch_decimal(decoded, "volume_ml")
        }}
     end
   end
@@ -53,6 +56,13 @@ defmodule Angivaonguoi.GeminiParser do
     4. The product categories (e.g. "Beer", "Soft Drinks", "Instant Noodles", "Chips", "Snacks", "Dairy", "Alcohol", "Seasoning", "Sauce").
        Use broad, reusable English category names so similar products share the same category.
        Categories MUST always be in English regardless of the product's language.
+    5. Energy information from the nutrition facts panel:
+       - "energy_kcal_per_100": the energy value in kcal per 100ml or per 100g as a number (e.g. 42.0), or null if not shown.
+         If the label shows kJ instead of kcal, convert: divide kJ by 4.184 and round to 1 decimal.
+         If the label shows kcal/serving rather than per 100ml/100g, still extract it and note the unit.
+       - "energy_unit": the denominator as printed, e.g. "100ml", "100g", "serving (330ml)", or null.
+       - "volume_ml": the total package/serving volume in ml as a number (e.g. 330 for a 330ml can, 500 for a 500ml bottle),
+         or null if not shown or not applicable (e.g. solid foods where weight is given instead).
 
     IMPORTANT language rules:
     - "product_name" and "ingredients[].name": keep exactly as printed on the label. If Vietnamese, use Vietnamese.
@@ -68,10 +78,13 @@ defmodule Angivaonguoi.GeminiParser do
         {"name": "<ingredient>", "amount_raw": "<raw or null>", "amount_percent": <number or null>},
         ...
       ],
-      "categories": ["<category1>", ...]
+      "categories": ["<category1>", ...],
+      "energy_kcal_per_100": <number or null>,
+      "energy_unit": "<string or null>",
+      "volume_ml": <number or null>
     }
     If you cannot determine the product name, return:
-    {"product_name": null, "barcode": null, "ingredients": [], "categories": []}
+    {"product_name": null, "barcode": null, "ingredients": [], "categories": [], "energy_kcal_per_100": null, "energy_unit": null, "volume_ml": null}
     """
   end
 
@@ -151,4 +164,24 @@ defmodule Angivaonguoi.GeminiParser do
   end
 
   defp normalise_ingredient(_), do: %{name: "Unknown", amount_raw: nil, amount_percent: nil}
+
+  defp fetch_decimal(map, key) do
+    case map[key] do
+      nil -> nil
+      v when is_number(v) -> Decimal.from_float(v / 1) |> Decimal.round(2)
+      v when is_binary(v) ->
+        case Decimal.parse(v) do
+          {d, ""} -> d
+          _ -> nil
+        end
+      _ -> nil
+    end
+  end
+
+  defp fetch_string(map, key) do
+    case map[key] do
+      v when is_binary(v) and v != "" -> v
+      _ -> nil
+    end
+  end
 end
