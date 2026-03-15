@@ -139,7 +139,7 @@ defmodule AngivaonguoiWeb.ProductLive.Show do
               <.link
                 :for={ingredient <- @product.ingredients}
                 navigate={~p"/ingredients/#{ingredient.id}"}
-                class="group flex items-center gap-1.5 badge badge-outline hover:badge-secondary transition-colors cursor-pointer py-3 px-4 text-sm"
+                class="group flex items-center gap-1.5 badge badge-outline hover:badge-secondary transition-colors cursor-pointer py-3 px-4 text-sm whitespace-normal h-auto text-left"
               >
                 <span><%= ingredient.name %></span>
                 <span
