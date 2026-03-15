@@ -33,10 +33,11 @@ defmodule AngivaonguoiWeb.Router do
       live "/login", AuthLive.Login, :new
       live "/register", AuthLive.Register, :new
       live "/products", ProductLive.Index, :index
-      live "/products/:id", ProductLive.Show, :show
+      live "/products/:slug", ProductLive.Show, :show
       live "/ingredients/:id", IngredientLive.Show, :show
       live "/categories/:id", CategoryLive.Show, :show
       live "/search", SearchLive, :index
+      live "/compare", CompareLive, :index
     end
 
     # Protected routes — require login

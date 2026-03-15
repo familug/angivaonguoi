@@ -4,10 +4,32 @@ defmodule AngivaonguoiWeb.ProductLive.Show do
   alias Angivaonguoi.Catalog
 
   @impl true
-  def mount(%{"id" => id}, _session, socket) do
-    product = Catalog.get_product_with_all!(id)
+  def mount(%{"slug" => slug}, _session, socket) do
+    product = Catalog.get_product_by_slug!(slug) |> then(&Catalog.get_product_with_all!(&1.id))
     amounts = Catalog.ingredient_amounts_for(product)
-    {:ok, assign(socket, product: product, amounts: amounts)}
+
+    host = AngivaonguoiWeb.Endpoint.host()
+    canonical_url = "https://#{host}/products/#{product.slug}"
+
+    ingredient_preview =
+      product.ingredients
+      |> Enum.take(5)
+      |> Enum.map(& &1.name)
+      |> Enum.join(", ")
+
+    description =
+      if ingredient_preview != "",
+        do: "Ingredients: #{ingredient_preview}",
+        else: "View full ingredient list on FoodCheck."
+
+    og = %{
+      title: "#{product.name} — FoodCheck",
+      description: description,
+      url: canonical_url,
+      image: product.image_url && absolute_url(host, product.image_url)
+    }
+
+    {:ok, assign(socket, product: product, amounts: amounts, page_og: og)}
   end
 
   @impl true
@@ -33,14 +55,20 @@ defmodule AngivaonguoiWeb.ProductLive.Show do
           &larr; Back to Products
         </.link>
 
-        <button
-          :if={@current_user && @current_user.is_admin}
-          phx-click="delete_product"
-          data-confirm={"Delete "#{@product.name}"? This cannot be undone."}
-          class="btn btn-error btn-sm"
-        >
-          Delete Product
-        </button>
+        <div class="flex gap-2">
+          <.link navigate={~p"/compare?a=#{@product.slug}"} class="btn btn-outline btn-sm">
+            Compare
+          </.link>
+
+          <button
+            :if={@current_user && @current_user.is_admin}
+            phx-click="delete_product"
+            data-confirm={"Delete \"#{@product.name}\"? This cannot be undone."}
+            class="btn btn-error btn-sm"
+          >
+            Delete Product
+          </button>
+        </div>
       </div>
 
       <div class="card bg-base-100 border border-base-200 shadow">
@@ -123,8 +151,6 @@ defmodule AngivaonguoiWeb.ProductLive.Show do
     end
   end
 
-  # Returns total kcal for the whole package, or nil if data is missing.
-  # energy_kcal_per_100 is per 100ml (or 100g), volume_ml is the package size.
   defp total_energy(%{energy_kcal_per_100: e, volume_ml: v})
        when not is_nil(e) and not is_nil(v) do
     Decimal.mult(e, v)
@@ -133,4 +159,7 @@ defmodule AngivaonguoiWeb.ProductLive.Show do
   end
 
   defp total_energy(_), do: nil
+
+  defp absolute_url(_host, "http" <> _ = url), do: url
+  defp absolute_url(host, path), do: "https://#{host}#{path}"
 end

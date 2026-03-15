@@ -40,7 +40,7 @@ RUN mix release
 FROM docker.io/debian:bookworm-slim AS runtime
 
 RUN apt-get update -y && \
-    apt-get install -y --no-install-recommends libstdc++6 openssl libncurses6 locales ca-certificates && \
+    apt-get install -y --no-install-recommends libstdc++6 openssl libncurses6 locales ca-certificates ffmpeg && \
     apt-get clean && rm -rf /var/lib/apt/lists/* && \
     sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && locale-gen
 

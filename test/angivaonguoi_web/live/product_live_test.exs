@@ -60,7 +60,7 @@ defmodule AngivaonguoiWeb.ProductLiveTest do
           ["Chocolate", "Snacks"]
         )
 
-      {:ok, _view, html} = live(conn, ~p"/products/#{product.id}")
+      {:ok, _view, html} = live(conn, ~p"/products/#{product.slug}")
 
       assert html =~ "Kit Kat"
       assert html =~ "Sugar"
@@ -78,7 +78,7 @@ defmodule AngivaonguoiWeb.ProductLiveTest do
           ["Chips"]
         )
 
-      {:ok, _view, html} = live(conn, ~p"/products/#{product.id}")
+      {:ok, _view, html} = live(conn, ~p"/products/#{product.slug}")
 
       assert html =~ "Salt"
       assert html =~ ~r|href="/ingredients/[0-9]+"|
@@ -91,7 +91,7 @@ defmodule AngivaonguoiWeb.ProductLiveTest do
       conn = init_test_session(conn, %{"user_id" => admin.id})
 
       {:ok, product} = Catalog.create_product(%{name: "Delete Me"})
-      {:ok, _view, html} = live(conn, ~p"/products/#{product.id}")
+      {:ok, _view, html} = live(conn, ~p"/products/#{product.slug}")
 
       assert html =~ "Delete Product"
     end
@@ -106,7 +106,7 @@ defmodule AngivaonguoiWeb.ProductLiveTest do
       conn = init_test_session(conn, %{"user_id" => user.id})
 
       {:ok, product} = Catalog.create_product(%{name: "No Delete"})
-      {:ok, _view, html} = live(conn, ~p"/products/#{product.id}")
+      {:ok, _view, html} = live(conn, ~p"/products/#{product.slug}")
 
       refute html =~ "Delete Product"
     end
@@ -120,7 +120,7 @@ defmodule AngivaonguoiWeb.ProductLiveTest do
           volume_ml: nil
         })
 
-      {:ok, _view, html} = live(build_conn(), ~p"/products/#{product.id}")
+      {:ok, _view, html} = live(build_conn(), ~p"/products/#{product.slug}")
 
       assert html =~ "25"
       assert html =~ "kcal"
@@ -136,7 +136,7 @@ defmodule AngivaonguoiWeb.ProductLiveTest do
           volume_ml: Decimal.new("330")
         })
 
-      {:ok, _view, html} = live(build_conn(), ~p"/products/#{product.id}")
+      {:ok, _view, html} = live(build_conn(), ~p"/products/#{product.slug}")
 
       # 42.0 * 330 / 100 = 138.6
       assert html =~ "138.6"
@@ -146,7 +146,7 @@ defmodule AngivaonguoiWeb.ProductLiveTest do
     test "does not show energy section when energy info is absent" do
       {:ok, product} = Catalog.create_product(%{name: "Plain Cracker"})
 
-      {:ok, _view, html} = live(build_conn(), ~p"/products/#{product.id}")
+      {:ok, _view, html} = live(build_conn(), ~p"/products/#{product.slug}")
 
       refute html =~ "kcal"
     end
@@ -160,7 +160,7 @@ defmodule AngivaonguoiWeb.ProductLiveTest do
           volume_ml: nil
         })
 
-      {:ok, _view, html} = live(build_conn(), ~p"/products/#{product.id}")
+      {:ok, _view, html} = live(build_conn(), ~p"/products/#{product.slug}")
 
       assert html =~ "380"
       assert html =~ "100g"
@@ -175,7 +175,7 @@ defmodule AngivaonguoiWeb.ProductLiveTest do
       conn = init_test_session(conn, %{"user_id" => admin.id})
 
       {:ok, product} = Catalog.create_product(%{name: "Bye Product"})
-      {:ok, view, _html} = live(conn, ~p"/products/#{product.id}")
+      {:ok, view, _html} = live(conn, ~p"/products/#{product.slug}")
 
       render_click(view, "delete_product")
 

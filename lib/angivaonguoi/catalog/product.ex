@@ -6,6 +6,7 @@ defmodule Angivaonguoi.Catalog.Product do
 
   schema "products" do
     field :name, :string
+    field :slug, :string
     field :image_url, :string
     field :raw_text, :string
     field :barcode, :string
@@ -27,9 +28,10 @@ defmodule Angivaonguoi.Catalog.Product do
   @doc false
   def changeset(product, attrs) do
     product
-    |> cast(attrs, [:name, :image_url, :raw_text, :barcode, :energy_kcal_per_100, :energy_unit, :volume_ml])
+    |> cast(attrs, [:name, :slug, :image_url, :raw_text, :barcode, :energy_kcal_per_100, :energy_unit, :volume_ml])
     |> validate_required([:name])
     |> validate_length(:name, min: 1, max: 255)
     |> unique_constraint(:name)
+    |> unique_constraint(:slug)
   end
 end

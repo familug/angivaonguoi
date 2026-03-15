@@ -24,6 +24,8 @@ defmodule Angivaonguoi.ImageProcessor do
   Returns `{:ok, product}` or `{:error, reason}`.
   """
   def process_image(image_binary, mime_type \\ "image/jpeg", image_url \\ nil) do
+    {image_binary, mime_type} = resize_image(image_binary, mime_type)
+
     with {:ok, response} <- call_gemini_with_fallback(image_binary, mime_type),
          {:ok, %{name: name, ingredients: ingredients, categories: categories, barcode: barcode,
                   energy_kcal_per_100: energy_kcal_per_100, energy_unit: energy_unit,
@@ -111,5 +113,46 @@ defmodule Angivaonguoi.ImageProcessor do
 
   defp error_message(body) do
     get_in(body, ["error", "message"]) || inspect(body)
+  end
+
+  # Resize the longest edge to ≤ 1024px and re-encode as JPEG quality ~75.
+  # Reduces a typical 4 MB phone photo to ~100–200 KB before base64 encoding,
+  # cutting Gemini token usage and latency significantly.
+  # Falls back to the original binary if ffmpeg is unavailable or fails.
+  defp resize_image(binary, mime_type) do
+    tmp_in = Path.join(System.tmp_dir!(), "fcheck_in_#{:rand.uniform(999_999)}.jpg")
+    tmp_out = Path.join(System.tmp_dir!(), "fcheck_out_#{:rand.uniform(999_999)}.jpg")
+
+    try do
+      File.write!(tmp_in, binary)
+
+      case System.cmd(
+             "ffmpeg",
+             [
+               "-y", "-i", tmp_in,
+               "-vf", "scale='if(gt(iw\\,ih)\\,min(iw\\,1024)\\,-2)':'if(gt(ih\\,iw)\\,min(ih\\,1024)\\,-2)'",
+               "-q:v", "5",
+               tmp_out
+             ],
+             stderr_to_stdout: true
+           ) do
+        {_, 0} ->
+          resized = File.read!(tmp_out)
+          {resized, "image/jpeg"}
+
+        {err, code} ->
+          require Logger
+          Logger.warning("ffmpeg resize failed (exit #{code}): #{err}")
+          {binary, mime_type}
+      end
+    rescue
+      e ->
+        require Logger
+        Logger.warning("resize_image error: #{inspect(e)}")
+        {binary, mime_type}
+    after
+      File.rm(tmp_in)
+      File.rm(tmp_out)
+    end
   end
 end

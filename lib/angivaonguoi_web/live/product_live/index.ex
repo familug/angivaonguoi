@@ -72,7 +72,7 @@ defmodule AngivaonguoiWeb.ProductLive.Index do
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <.link
           :for={product <- @products}
-          navigate={~p"/products/#{product.id}"}
+          navigate={~p"/products/#{product.slug}"}
           class="card bg-base-100 border border-base-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
         >
           <figure :if={product.image_url} class="px-4 pt-4">

@@ -14,6 +14,8 @@ defmodule Angivaonguoi.Catalog do
 
   def get_product!(id), do: Repo.get!(Product, id)
 
+  def get_product_by_slug!(slug), do: Repo.get_by!(Product, slug: slug)
+
   def get_product_with_ingredients!(id) do
     Product
     |> Repo.get!(id)
@@ -32,9 +34,20 @@ defmodule Angivaonguoi.Catalog do
   end
 
   def create_product(attrs) do
-    %Product{}
-    |> Product.changeset(attrs)
-    |> Repo.insert()
+    # Insert with a temporary unique slug so the NOT NULL constraint is satisfied,
+    # then immediately update to the canonical slug once we have the id.
+    tmp_slug = "tmp-#{System.unique_integer([:positive, :monotonic])}"
+
+    with {:ok, product} <-
+           %Product{}
+           |> Product.changeset(Map.put(attrs, :slug, tmp_slug))
+           |> Repo.insert() do
+      slug = build_product_slug(product)
+
+      product
+      |> Product.changeset(%{slug: slug})
+      |> Repo.update()
+    end
   end
 
   def delete_product(%Product{} = product) do
@@ -259,5 +272,58 @@ defmodule Angivaonguoi.Catalog do
     |> String.downcase()
     |> String.replace(~r/[^a-z0-9]+/, "-")
     |> String.trim("-")
+  end
+
+  # Slug = slugified-name + "-" + barcode  (if barcode present)
+  #      = slugified-name + "-id" + id     (fallback when no barcode)
+  defp build_product_slug(%Product{name: name, barcode: barcode, id: id}) do
+    base = slugify(name)
+
+    if barcode && barcode != "" do
+      "#{base}-#{barcode}"
+    else
+      "#{base}-id#{id}"
+    end
+  end
+
+  @doc """
+  Compares the ingredient lists of two products.
+
+  Returns a map with three keys:
+    - `:common`  — ingredients present in both products
+    - `:only_a`  — ingredients only in product A
+    - `:only_b`  — ingredients only in product B
+
+  Each entry is a map `%{ingredient, amount_a, amount_b}` (amounts are nil
+  for sides that don't have the ingredient).
+  """
+  def compare_products(%Product{} = a, %Product{} = b) do
+    a = Repo.preload(a, :ingredients)
+    b = Repo.preload(b, :ingredients)
+
+    amounts_a = ingredient_amounts_for(a)
+    amounts_b = ingredient_amounts_for(b)
+
+    ids_a = MapSet.new(a.ingredients, & &1.id)
+    ids_b = MapSet.new(b.ingredients, & &1.id)
+
+    all_ingredients =
+      (a.ingredients ++ b.ingredients)
+      |> Enum.uniq_by(& &1.id)
+      |> Enum.sort_by(& &1.name)
+
+    Enum.reduce(all_ingredients, %{common: [], only_a: [], only_b: []}, fn ing, acc ->
+      in_a = MapSet.member?(ids_a, ing.id)
+      in_b = MapSet.member?(ids_b, ing.id)
+      amt_a = Map.get(amounts_a, ing.id)
+      amt_b = Map.get(amounts_b, ing.id)
+      entry = %{ingredient: ing, amount_a: amt_a, amount_b: amt_b}
+
+      cond do
+        in_a and in_b -> Map.update!(acc, :common, &(&1 ++ [entry]))
+        in_a -> Map.update!(acc, :only_a, &(&1 ++ [entry]))
+        in_b -> Map.update!(acc, :only_b, &(&1 ++ [entry]))
+      end
+    end)
   end
 end
