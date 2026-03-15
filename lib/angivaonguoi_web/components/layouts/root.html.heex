@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="csrf-token" content={get_csrf_token()} />
-    <.live_title default="Food Finder">
+    <.live_title default="FoodCheck">
       {assigns[:page_title]}
     </.live_title>
     <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
@@ -15,7 +15,7 @@
     <nav class="navbar bg-base-100 shadow-sm border-b border-base-200 sticky top-0 z-50">
       <div class="navbar-start">
         <a href="/products" class="btn btn-ghost text-xl font-bold text-primary">
-          🥗 Food Finder
+          🥗 FoodCheck
         </a>
       </div>
       <div class="navbar-center hidden md:flex gap-2">
