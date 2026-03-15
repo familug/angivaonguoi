@@ -85,10 +85,10 @@ defmodule Angivaonguoi.CatalogTest do
       assert is_nil(product.volume_ml)
     end
 
-    test "create_product/1 enforces unique name" do
-      assert {:ok, _} = Catalog.create_product(%{name: "Pringles"})
-      assert {:error, changeset} = Catalog.create_product(%{name: "Pringles"})
-      assert "has already been taken" in errors_on(changeset).name
+    test "create_product/1 returns duplicate tuple on unique name conflict" do
+      assert {:ok, existing} = Catalog.create_product(%{name: "Pringles"})
+      assert {:error, {:duplicate, found}} = Catalog.create_product(%{name: "Pringles"})
+      assert found.id == existing.id
     end
 
     test "create_product_with_ingredients/2 creates product with associated ingredients" do
@@ -207,6 +207,14 @@ defmodule Angivaonguoi.CatalogTest do
       assert length(result.common) == 1
       assert result.only_a == []
       assert result.only_b == []
+    end
+
+    test "create_product returns {:error, {:duplicate, existing}} when name already taken" do
+      {:ok, existing} = Catalog.create_product(%{name: "Duplicate Product"})
+      result = Catalog.create_product(%{name: "Duplicate Product"})
+      assert {:error, {:duplicate, found}} = result
+      assert found.id == existing.id
+      assert found.slug == existing.slug
     end
   end
 end

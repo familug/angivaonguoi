@@ -17,6 +17,23 @@ defmodule AngivaonguoiWeb.Router do
     plug :accepts, ["json"]
   end
 
+  pipeline :require_admin do
+    plug :fetch_session
+    plug :fetch_current_user
+    plug :ensure_admin
+  end
+
+  defp ensure_admin(conn, _opts) do
+    if conn.assigns[:current_user] && conn.assigns[:current_user].is_admin do
+      conn
+    else
+      conn
+      |> Phoenix.Controller.put_flash(:error, "Admin access required.")
+      |> Phoenix.Controller.redirect(to: "/login")
+      |> Plug.Conn.halt()
+    end
+  end
+
   scope "/", AngivaonguoiWeb do
     pipe_through :browser
 
@@ -47,13 +64,18 @@ defmodule AngivaonguoiWeb.Router do
     end
   end
 
-  if Application.compile_env(:angivaonguoi, :dev_routes) do
-    import Phoenix.LiveDashboard.Router
+  import Phoenix.LiveDashboard.Router
 
+  scope "/admin" do
+    pipe_through [:browser, :require_admin]
+
+    live_dashboard "/dashboard", metrics: AngivaonguoiWeb.Telemetry
+  end
+
+  if Application.compile_env(:angivaonguoi, :dev_routes) do
     scope "/dev" do
       pipe_through :browser
 
-      live_dashboard "/dashboard", metrics: AngivaonguoiWeb.Telemetry
       forward "/mailbox", Plug.Swoosh.MailboxPreview
     end
   end

@@ -12,6 +12,7 @@ defmodule AngivaonguoiWeb.UploadLive do
      |> assign(:status, :idle)
      |> assign(:error, nil)
      |> assign(:product, nil)
+     |> assign(:duplicate, nil)
      |> allow_upload(:product_image,
        accept: ~w(.jpg .jpeg .png .webp),
        max_entries: 1,
@@ -48,7 +49,17 @@ defmodule AngivaonguoiWeb.UploadLive do
      socket
      |> assign(:status, :done)
      |> assign(:product, product)
+     |> assign(:duplicate, nil)
      |> assign(:error, nil)}
+  end
+
+  def handle_info({:image_processed, {:error, {:duplicate, existing}}}, socket) do
+    {:noreply,
+     socket
+     |> assign(:status, :duplicate)
+     |> assign(:duplicate, existing)
+     |> assign(:error, nil)
+     |> assign(:product, nil)}
   end
 
   def handle_info({:image_processed, {:error, reason}}, socket) do
@@ -63,6 +74,7 @@ defmodule AngivaonguoiWeb.UploadLive do
      socket
      |> assign(:status, :error)
      |> assign(:error, message)
+     |> assign(:duplicate, nil)
      |> assign(:product, nil)}
   end
 
@@ -116,6 +128,18 @@ defmodule AngivaonguoiWeb.UploadLive do
           Product "<%= @product.name %>" added successfully!
           <.link navigate={~p"/products/#{@product.slug}"} class="link font-semibold ml-1">
             View product &rarr;
+          </.link>
+        </span>
+      </div>
+
+      <div :if={@status == :duplicate and @duplicate} class="alert alert-warning mb-6">
+        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <span>
+          This product already exists:
+          <.link navigate={~p"/products/#{@duplicate.slug}"} class="link font-semibold ml-1">
+            <%= @duplicate.name %> &rarr;
           </.link>
         </span>
       </div>

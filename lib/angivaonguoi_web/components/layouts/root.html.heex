@@ -19,7 +19,7 @@
       <meta name="twitter:title"       content={og.title} />
       <meta name="twitter:description" content={og.description} />
     <% end %>
-    <.live_title default="FoodCheck">
+    <.live_title default="FoodCheck" suffix=" | FoodCheck">
       {assigns[:page_title]}
     </.live_title>
     <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
@@ -40,7 +40,7 @@
       <div class="navbar-end gap-2">
         <%= if assigns[:current_user] do %>
           <span class="text-sm text-gray-500 hidden sm:inline">
-            <%= @current_user.username %>
+            <%= @current_user.username %> <span class="opacity-50">#<%= @current_user.id %></span>
           </span>
           <a href="/upload" class="btn btn-primary btn-sm">Upload</a>
           <form action={~p"/session"} method="post" class="inline">

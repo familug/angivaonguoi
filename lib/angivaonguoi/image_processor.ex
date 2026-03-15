@@ -45,6 +45,9 @@ defmodule Angivaonguoi.ImageProcessor do
                gemini_model: model}
            ) do
       {:ok, product}
+    else
+      {:error, {:duplicate, existing}} -> {:error, {:duplicate, existing}}
+      other -> other
     end
   end
 

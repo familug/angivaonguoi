@@ -34,21 +34,48 @@ defmodule Angivaonguoi.Catalog do
   end
 
   def create_product(attrs) do
-    # Insert with a temporary unique slug so the NOT NULL constraint is satisfied,
-    # then immediately update to the canonical slug once we have the id.
     tmp_slug = "tmp-#{System.unique_integer([:positive, :monotonic])}"
 
     with {:ok, product} <-
            %Product{}
            |> Product.changeset(Map.put(attrs, :slug, tmp_slug))
-           |> Repo.insert() do
+           |> Repo.insert()
+           |> handle_duplicate(attrs) do
       slug = build_product_slug(product)
 
       product
       |> Product.changeset(%{slug: slug})
       |> Repo.update()
+      |> handle_duplicate(attrs)
     end
   end
+
+  defp handle_duplicate({:error, %Ecto.Changeset{} = cs}, attrs) do
+    errors = cs.errors
+
+    if Keyword.has_key?(errors, :name) or Keyword.has_key?(errors, :slug) do
+      # Try to find the existing product by name or by the barcode-derived slug
+      name = Map.get(attrs, :name) || Map.get(attrs, "name")
+      barcode = Map.get(attrs, :barcode) || Map.get(attrs, "barcode")
+
+      existing =
+        cond do
+          name -> Repo.get_by(Product, name: name)
+          barcode -> Repo.one(from p in Product, where: p.barcode == ^barcode, limit: 1)
+          true -> nil
+        end
+
+      if existing do
+        {:error, {:duplicate, existing}}
+      else
+        {:error, cs}
+      end
+    else
+      {:error, cs}
+    end
+  end
+
+  defp handle_duplicate(result, _attrs), do: result
 
   def delete_product(%Product{} = product) do
     Repo.delete(product)

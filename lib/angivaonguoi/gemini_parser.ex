@@ -50,9 +50,10 @@ defmodule Angivaonguoi.GeminiParser do
     2. The barcode number if visible on the label (EAN-13, UPC-A, etc.), or null if not visible.
     3. The full list of ingredients as printed on the label.
        For each ingredient, extract:
-       - "name": the ingredient name WITHOUT the percentage/amount
+       - "name": the ingredient name WITHOUT the percentage/amount. Copy the name EXACTLY as printed — do NOT simplify, merge, or shorten. For example if the label says "Đường HFCS" and "Đường mía" as separate items, they MUST be two separate entries, not merged into "Đường".
        - "amount_raw": the raw amount/percentage string as printed (e.g. "61%", "200mg", "1.2g/100ml"), or null if not shown
        - "amount_percent": the numeric percentage as a number (e.g. 61.0), or null if not a percentage
+       Each distinct ingredient on the label must be its own entry in the array, even if they share a common word.
     4. The product categories (e.g. "Beer", "Soft Drinks", "Instant Noodles", "Chips", "Snacks", "Dairy", "Alcohol", "Seasoning", "Sauce").
        Use broad, reusable English category names so similar products share the same category.
        Categories MUST always be in English regardless of the product's language.
