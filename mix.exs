@@ -21,7 +21,7 @@ defmodule Angivaonguoi.MixProject do
   def application do
     [
       mod: {Angivaonguoi.Application, []},
-      extra_applications: [:logger, :runtime_tools, :os_mon]
+      extra_applications: [:logger, :runtime_tools] ++ os_mon_app()
     ]
   end
 
@@ -38,6 +38,14 @@ defmodule Angivaonguoi.MixProject do
   # Specifies your project dependencies.
   #
   # Type `mix help deps` for examples and options.
+  defp os_mon_app do
+    case :application.load(:os_mon) do
+      :ok -> [:os_mon]
+      {:error, {:already_loaded, :os_mon}} -> [:os_mon]
+      _ -> []
+    end
+  end
+
   defp deps do
     [
       {:phoenix, "~> 1.8.5"},

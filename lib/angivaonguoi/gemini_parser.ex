@@ -45,46 +45,56 @@ defmodule Angivaonguoi.GeminiParser do
   """
   def build_prompt do
     """
-    Analyze this food or beverage product image. Extract:
-    1. The product name (brand + product type, e.g. "Heineken Beer", "Lay's Classic Chips", "Mì Hảo Hảo").
-    2. The barcode number if visible on the label (EAN-13, UPC-A, etc.), or null if not visible.
-    3. The full list of ingredients as printed on the label.
-       For each ingredient, extract:
-       - "name": the ingredient name WITHOUT the percentage/amount. Copy the name EXACTLY as printed — do NOT simplify, merge, or shorten. For example if the label says "Đường HFCS" and "Đường mía" as separate items, they MUST be two separate entries, not merged into "Đường".
-       - "amount_raw": the raw amount/percentage string as printed (e.g. "61%", "200mg", "1.2g/100ml"), or null if not shown
-       - "amount_percent": the numeric percentage as a number (e.g. 61.0), or null if not a percentage
-       Each distinct ingredient on the label must be its own entry in the array, even if they share a common word.
-    4. The product categories (e.g. "Beer", "Soft Drinks", "Instant Noodles", "Chips", "Snacks", "Dairy", "Alcohol", "Seasoning", "Sauce").
-       Use broad, reusable English category names so similar products share the same category.
-       Categories MUST always be in English regardless of the product's language.
-    5. Energy information from the nutrition facts panel:
-       - "energy_kcal_per_100": the energy value in kcal per 100ml or per 100g as a number (e.g. 42.0), or null if not shown.
-         If the label shows kJ instead of kcal, convert: divide kJ by 4.184 and round to 1 decimal.
-         If the label shows kcal/serving rather than per 100ml/100g, still extract it and note the unit.
-       - "energy_unit": the denominator as printed, e.g. "100ml", "100g", "serving (330ml)", or null.
-       - "volume_ml": the total package/serving volume in ml as a number (e.g. 330 for a 330ml can, 500 for a 500ml bottle),
-         or null if not shown or not applicable (e.g. solid foods where weight is given instead).
+    You are a food label data extractor. Your job is to read a product packaging image and extract specific fields.
 
-    IMPORTANT language rules:
-    - "product_name" and "ingredients[].name": keep exactly as printed on the label. If Vietnamese, use Vietnamese.
-    - "categories": always English.
-    - "amount_raw": keep exactly as printed (numbers/symbols are language-neutral).
-    - Do NOT translate product names or ingredient names.
+    STRICT RULES — read carefully before extracting:
+    - Only extract text that is CLEARLY VISIBLE and LEGIBLE in the image. If you cannot read it clearly, use null.
+    - Do NOT guess, infer, or hallucinate any value. If unsure, use null.
+    - The label may contain a lot of text (nutrition tables, marketing slogans, warnings, certifications). IGNORE everything except the fields listed below.
 
-    Return ONLY valid JSON, no extra text:
+    FIELDS TO EXTRACT:
+
+    1. PRODUCT NAME
+       - Brand + product type as printed on the front of the pack (e.g. "Heineken Beer", "Lay's Classic Chips", "Mì Hảo Hảo").
+       - Keep exactly as printed. If Vietnamese, keep Vietnamese. Do NOT translate.
+
+    2. BARCODE
+       - The numeric barcode digits (EAN-13, UPC-A, etc.) if clearly visible, or null.
+
+    3. INGREDIENTS LIST
+       - Find the section explicitly labelled "Ingredients", "Thành phần", or equivalent.
+       - DO NOT read from the nutrition facts table — that is a different section.
+       - Copy each ingredient name EXACTLY as printed. Do NOT simplify, merge, or paraphrase.
+         Example: if the label lists "Đường HFCS" and "Đường mía" as separate items, they are TWO separate entries. Never merge them into "Đường".
+       - Each ingredient must have:
+         - "name": ingredient name only, WITHOUT any percentage or amount
+         - "amount_raw": the amount/percentage string as printed (e.g. "61%", "4%", "200mg"), or null
+         - "amount_percent": the numeric percentage as a float (e.g. 61.0), or null if not a percentage
+
+    4. CATEGORIES
+       - Broad English category tags for this product type (e.g. "Beer", "Soft Drinks", "Instant Noodles", "Chips", "Dairy").
+       - ALWAYS English, regardless of the product language.
+
+    5. ENERGY (from the NUTRITION FACTS panel only — ignore marketing claims like "only 90 kcal!")
+       - "energy_kcal_per_100": kcal per 100ml or per 100g as a number, or null.
+         If shown in kJ, convert: kJ ÷ 4.184, round to 1 decimal.
+       - "energy_unit": denominator as printed, e.g. "100ml", "100g", "serving (330ml)", or null.
+       - "volume_ml": total package volume in ml (e.g. 330, 500), or null if not applicable or not shown.
+
+    Return ONLY valid JSON, no extra text, no markdown:
     {
-      "product_name": "<name>",
-      "barcode": "<barcode digits or null>",
+      "product_name": "<name or null>",
+      "barcode": "<digits or null>",
       "ingredients": [
         {"name": "<ingredient>", "amount_raw": "<raw or null>", "amount_percent": <number or null>},
         ...
       ],
-      "categories": ["<category1>", ...],
+      "categories": ["<category>", ...],
       "energy_kcal_per_100": <number or null>,
       "energy_unit": "<string or null>",
       "volume_ml": <number or null>
     }
-    If you cannot determine the product name, return:
+    If the product name cannot be determined, return:
     {"product_name": null, "barcode": null, "ingredients": [], "categories": [], "energy_kcal_per_100": null, "energy_unit": null, "volume_ml": null}
     """
   end
