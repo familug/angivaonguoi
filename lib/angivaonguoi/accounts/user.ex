@@ -14,7 +14,7 @@ defmodule Angivaonguoi.Accounts.User do
 
   def registration_changeset(user, attrs) do
     user
-    |> cast(attrs, [:email, :username, :password])
+    |> cast(attrs, [:email, :username, :password, :is_admin])
     |> validate_required([:email, :username, :password])
     |> validate_format(:email, ~r/^[^\s]+@[^\s]+$/, message: "must be a valid email")
     |> validate_length(:username, min: 2, max: 40)
