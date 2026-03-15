@@ -26,7 +26,7 @@ defmodule AngivaonguoiWeb.IngredientLiveTest do
 
       {:ok, _view, html} = live(conn, ~p"/ingredients/#{ingredient.id}")
 
-      assert html =~ ~r|href="/products/[0-9]+"|
+      assert html =~ ~r|href="/products/cheetos-id\d+"|
     end
   end
 

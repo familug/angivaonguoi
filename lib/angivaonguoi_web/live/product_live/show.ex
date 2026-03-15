@@ -84,7 +84,13 @@ defmodule AngivaonguoiWeb.ProductLive.Show do
             <h1 class="text-2xl font-bold text-gray-900"><%= @product.name %></h1>
 
             <div :if={@product.barcode} class="mt-1 text-sm text-gray-400 font-mono">
-              Barcode: <%= @product.barcode %>
+              Barcode:
+              <a href={"https://duckduckgo.com/?q=#{@product.barcode}"}
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 class="link link-hover">
+                <%= @product.barcode %>
+              </a>
             </div>
 
             <div :if={@current_user && @current_user.is_admin && @product.gemini_model}

@@ -71,7 +71,7 @@ defmodule AngivaonguoiWeb.SearchLive do
         <div class="grid grid-cols-1 gap-3">
           <.link
             :for={product <- @results}
-            navigate={~p"/products/#{product.id}"}
+            navigate={~p"/products/#{product.slug}"}
             class="card bg-base-100 border border-base-200 hover:border-primary transition-colors"
           >
             <div class="card-body py-3 flex-row items-center justify-between">

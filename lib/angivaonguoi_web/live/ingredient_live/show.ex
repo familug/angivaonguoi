@@ -37,7 +37,7 @@ defmodule AngivaonguoiWeb.IngredientLive.Show do
       <div class="grid grid-cols-1 gap-3">
         <.link
           :for={product <- @ingredient.products}
-          navigate={~p"/products/#{product.id}"}
+          navigate={~p"/products/#{product.slug}"}
           class="card bg-base-100 border border-base-200 hover:border-primary transition-colors cursor-pointer"
         >
           <div class="card-body py-3">
