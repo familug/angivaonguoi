@@ -169,5 +169,44 @@ defmodule Angivaonguoi.CatalogTest do
       assert {:ok, ingredient} = Catalog.get_or_create_ingredient("Vanilla")
       assert ingredient.id == existing.id
     end
+
+    test "get_or_create_ingredient/1 is case-insensitive — returns same row for sugar/Sugar/SUGAR" do
+      {:ok, first} = Catalog.get_or_create_ingredient("Sugar")
+      {:ok, second} = Catalog.get_or_create_ingredient("sugar")
+      {:ok, third} = Catalog.get_or_create_ingredient("SUGAR")
+      assert first.id == second.id
+      assert first.id == third.id
+    end
+
+    test "ingredient name is trimmed and whitespace collapsed on save" do
+      {:ok, ingredient} = Catalog.get_or_create_ingredient("  wheat   flour  ")
+      assert ingredient.name == "Wheat flour"
+    end
+
+    test "ingredient name first letter is capitalised on save" do
+      {:ok, ingredient} = Catalog.get_or_create_ingredient("palm oil")
+      assert ingredient.name == "Palm oil"
+    end
+
+    test "two products with same ingredient in different casing share the same ingredient row" do
+      {:ok, p1} = Catalog.create_product_with_ingredients_and_categories("Product A", ["corn oil"], [])
+      {:ok, p2} = Catalog.create_product_with_ingredients_and_categories("Product B", ["Corn Oil"], [])
+
+      p1 = Catalog.get_product_with_ingredients!(p1.id)
+      p2 = Catalog.get_product_with_ingredients!(p2.id)
+
+      id1 = hd(p1.ingredients).id
+      id2 = hd(p2.ingredients).id
+      assert id1 == id2
+    end
+
+    test "compare_products shows shared ingredient as common when casing differs" do
+      {:ok, a} = Catalog.create_product_with_ingredients_and_categories("Cola A", ["sugar"], [])
+      {:ok, b} = Catalog.create_product_with_ingredients_and_categories("Cola B", ["Sugar"], [])
+      result = Catalog.compare_products(a, b)
+      assert length(result.common) == 1
+      assert result.only_a == []
+      assert result.only_b == []
+    end
   end
 end

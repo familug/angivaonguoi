@@ -153,10 +153,15 @@ defmodule Angivaonguoi.Catalog do
   end
 
   def get_or_create_ingredient(name) when is_binary(name) do
-    case Repo.get_by(Ingredient, name: name) do
+    import Ecto.Query, only: [from: 2]
+    normalised = name |> String.trim() |> String.replace(~r/\s+/, " ")
+
+    # Case-insensitive lookup so "sugar", "Sugar", "SUGAR" all map to the same row.
+    # The changeset will capitalise the first letter on insert.
+    case Repo.one(from i in Ingredient, where: fragment("lower(?)", i.name) == ^String.downcase(normalised), limit: 1) do
       nil ->
         %Ingredient{}
-        |> Ingredient.changeset(%{name: name})
+        |> Ingredient.changeset(%{name: normalised})
         |> Repo.insert()
 
       ingredient ->
