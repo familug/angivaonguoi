@@ -6,15 +6,13 @@ defmodule Angivaonguoi.ImageProcessor do
 
   alias Angivaonguoi.{Catalog, GeminiParser}
 
-  # Free-tier fallback chain (all support vision / generateContent):
+  # Fallback chain — tries models in order, moves to next on 429 rate-limit:
   #
-  # 1. gemini-2.5-flash       — best quality, 10 RPM / 250 RPD free
-  # 2. gemini-2.5-flash-lite  — lighter, 15 RPM / 1 000 RPD free (highest free daily quota)
-  #
-  # gemini-2.0-flash / 2.0-flash-lite are deprecated (retiring 2026-03-03) and
-  # already exhausted on this free project — removed from fallback.
-  # gemini-3.x preview models respond 200 but are paid-only previews, not free-tier.
-  @gemini_models ~w(gemini-2.5-flash gemini-2.5-flash-lite)
+  # 1. gemini-3.1-flash-lite-preview — newest, fastest (paid preview)
+  # 2. gemini-3-flash-preview         — Gemini 3 Flash (paid preview)
+  # 3. gemini-2.5-flash               — free tier, 10 RPM / 250 RPD
+  # 4. gemini-2.5-flash-lite          — free tier, higher daily quota
+  @gemini_models ~w(gemini-3.1-flash-lite-preview gemini-3-flash-preview gemini-2.5-flash gemini-2.5-flash-lite)
   @gemini_base "https://generativelanguage.googleapis.com/v1beta/models"
 
   @doc """
