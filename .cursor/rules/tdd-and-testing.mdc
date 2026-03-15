@@ -1,0 +1,54 @@
+---
+description: TDD and testing requirements for all new features
+alwaysApply: true
+---
+
+# TDD & Testing Requirements
+
+Every new feature MUST follow Red/Green TDD and include both unit tests and e2e tests before the feature is considered done.
+
+## Workflow
+
+1. **Red** — Write a failing unit test that describes the desired behaviour. Run `mix test` and confirm it fails.
+2. **Green** — Write the minimum production code to make the test pass. Run `mix test` and confirm it passes.
+3. **Refactor** — Clean up, then re-run tests to confirm they still pass.
+4. **E2E** — Add a Playwright test in `e2e/tests/` that exercises the feature from the browser.
+
+## Unit / LiveView tests (`mix test`)
+
+- Context functions → `test/angivaonguoi/<context>_test.exs`
+- LiveView behaviour → `test/angivaonguoi_web/live/<name>_test.exs`
+- Parser / pure logic → `test/angivaonguoi/<module>_test.exs`
+
+```elixir
+# ✅ RED first — test does not exist yet
+test "create_product persists energy fields" do
+  assert {:ok, p} = Catalog.create_product(%{name: "Cola", energy_kcal_per_100: Decimal.new("42")})
+  assert Decimal.equal?(p.energy_kcal_per_100, Decimal.new("42"))
+end
+```
+
+## E2E tests (`e2e/tests/*.spec.js`)
+
+- One `test.describe` block per feature area.
+- Use `PLAYWRIGHT_BASE_URL` env var when the dev server runs on a non-default port.
+- Seed required DB data via `mix run -e '...'` before running; document the seed command in a comment above the constant.
+
+```js
+// Seeded via: mix run -e 'Catalog.create_product(%{name: "Cola", energy_kcal_per_100: Decimal.new("42"), volume_ml: Decimal.new("330")})'
+const ENERGY_PRODUCT = { id: 7, name: "Cola" };
+
+test.describe("Energy display", () => {
+  test("shows kcal per 100ml", async ({ page }) => {
+    await page.goto(`/products/${ENERGY_PRODUCT.id}`);
+    await expect(page.getByText("42")).toBeVisible();
+  });
+});
+```
+
+## Checklist before marking a feature done
+
+- [ ] Unit tests written **before** implementation (Red/Green)
+- [ ] `mix test` passes with 0 failures
+- [ ] E2E test added in `e2e/tests/`
+- [ ] E2E test passes: `cd e2e && npx playwright test --grep "<feature name>"`
