@@ -117,6 +117,12 @@ defmodule AngivaonguoiWeb.CompareLive do
               class="w-full h-32 object-contain rounded bg-base-200 mb-2"
             />
             <p class="font-semibold text-sm"><%= @product_a.name %></p>
+            <div :if={@product_a.energy_kcal_per_100} class="mt-2 text-xs text-gray-500 space-y-0.5">
+              <div><span class="font-medium text-orange-500"><%= @product_a.energy_kcal_per_100 %> kcal</span> / <%= @product_a.energy_unit || "100ml" %></div>
+              <div :if={total_energy(@product_a)}>
+                <span class="font-medium text-orange-500"><%= total_energy(@product_a) %> kcal</span> total (<%= @product_a.volume_ml %>ml)
+              </div>
+            </div>
           </div>
           <div class="card bg-base-100 border border-base-200 shadow-sm p-4">
             <img
@@ -126,6 +132,12 @@ defmodule AngivaonguoiWeb.CompareLive do
               class="w-full h-32 object-contain rounded bg-base-200 mb-2"
             />
             <p class="font-semibold text-sm"><%= @product_b.name %></p>
+            <div :if={@product_b.energy_kcal_per_100} class="mt-2 text-xs text-gray-500 space-y-0.5">
+              <div><span class="font-medium text-orange-500"><%= @product_b.energy_kcal_per_100 %> kcal</span> / <%= @product_b.energy_unit || "100ml" %></div>
+              <div :if={total_energy(@product_b)}>
+                <span class="font-medium text-orange-500"><%= total_energy(@product_b) %> kcal</span> total (<%= @product_b.volume_ml %>ml)
+              </div>
+            </div>
           </div>
         </div>
 
@@ -214,4 +226,11 @@ defmodule AngivaonguoiWeb.CompareLive do
   defp amount_display(nil), do: nil
   defp amount_display(%{amount_raw: raw}) when is_binary(raw) and raw != "", do: raw
   defp amount_display(_), do: nil
+
+  defp total_energy(%{energy_kcal_per_100: e, volume_ml: v})
+       when not is_nil(e) and not is_nil(v) do
+    Decimal.mult(e, v) |> Decimal.div(Decimal.new(100)) |> Decimal.round(1)
+  end
+
+  defp total_energy(_), do: nil
 end
