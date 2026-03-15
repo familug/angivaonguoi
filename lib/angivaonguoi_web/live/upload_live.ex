@@ -52,10 +52,17 @@ defmodule AngivaonguoiWeb.UploadLive do
   end
 
   def handle_info({:image_processed, {:error, reason}}, socket) do
+    message =
+      cond do
+        is_binary(reason) -> reason
+        is_exception(reason) -> Exception.message(reason)
+        true -> inspect(reason)
+      end
+
     {:noreply,
      socket
      |> assign(:status, :error)
-     |> assign(:error, reason)
+     |> assign(:error, message)
      |> assign(:product, nil)}
   end
 

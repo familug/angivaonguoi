@@ -18,7 +18,7 @@ defmodule Angivaonguoi.GeminiParser do
 
     with text <- get_in(candidate, ["content", "parts", Access.at(0), "text"]),
          {:ok, json} <- extract_json(text),
-         {:ok, decoded} <- Jason.decode(json),
+         {:ok, decoded} <- decode_json(json),
          {:ok, name} <- fetch_name(decoded),
          {:ok, ingredients} <- fetch_ingredients(decoded),
          {:ok, categories} <- fetch_categories(decoded) do
@@ -91,6 +91,18 @@ defmodule Angivaonguoi.GeminiParser do
   # ---------------------------------------------------------------------------
   # Private helpers
   # ---------------------------------------------------------------------------
+
+  defp decode_json(json) do
+    case Jason.decode(json) do
+      {:ok, decoded} ->
+        {:ok, decoded}
+
+      {:error, %Jason.DecodeError{} = err} ->
+        require Logger
+        Logger.error("Gemini returned truncated/invalid JSON: #{inspect(err)}")
+        {:error, "AI response was cut off mid-way (JSON truncated). Try a clearer photo or retry."}
+    end
+  end
 
   defp extract_json(nil), do: {:error, "No text in Gemini response part"}
 
