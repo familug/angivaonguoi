@@ -22,6 +22,16 @@ async function goto(page, url) {
   await page.waitForLoadState("networkidle");
 }
 
+// Login as admin (requires seeds: admin@e2e.test / e2eadmin123)
+async function loginAsAdmin(page) {
+  await goto(page, "/login");
+  await page.fill("input[name='email']", "admin@e2e.test");
+  await page.fill("input[name='password']", "e2eadmin123");
+  await page.getByRole("button", { name: /log in/i }).click();
+  await page.waitForURL(/\/(products)?$/);
+  await page.waitForLoadState("networkidle");
+}
+
 // ---------------------------------------------------------------------------
 // Product listing
 // ---------------------------------------------------------------------------
@@ -186,6 +196,41 @@ test.describe("Energy display on product detail page", () => {
     // PRODUCT (id=1) was uploaded before energy feature — has no energy data
     await goto(page, `/products/${PRODUCT.id}`);
     await expect(page.getByText("kcal", { exact: false })).not.toBeVisible();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Verified / unverified products (requires seeds: mix run priv/repo/seeds.exs)
+// ---------------------------------------------------------------------------
+
+test.describe("Verified product visibility", () => {
+  test("verified product appears in public listing", async ({ page }) => {
+    await goto(page, "/products");
+    await expect(page.getByText("E2E Verified Product")).toBeVisible();
+  });
+
+  test("unverified product hidden from public listing", async ({ page }) => {
+    await goto(page, "/products");
+    await expect(page.getByText("E2E Unverified Product")).not.toBeVisible();
+  });
+
+  test("admin sees unverified product and can verify it", async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.goto("/products");
+    await page.waitForLoadState("networkidle");
+
+    const unverifiedCard = page.locator(".card").filter({ hasText: "E2E Unverified Product" });
+    await expect(unverifiedCard).toBeVisible();
+
+    await unverifiedCard.getByRole("button", { name: "Verify" }).click();
+    await page.waitForLoadState("networkidle");
+
+    const verifiedCard = page.locator(".card").filter({ hasText: "E2E Unverified Product" });
+    await expect(verifiedCard.getByRole("button", { name: "Unverify" })).toBeVisible();
+
+    // Restore state for next run
+    await verifiedCard.getByRole("button", { name: "Unverify" }).click();
+    await page.waitForLoadState("networkidle");
   });
 });
 

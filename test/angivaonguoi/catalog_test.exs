@@ -1,14 +1,17 @@
 defmodule Angivaonguoi.CatalogTest do
   use Angivaonguoi.DataCase
 
-  alias Angivaonguoi.Catalog
+  alias Angivaonguoi.{Accounts, Catalog}
   alias Angivaonguoi.Catalog.{Product, Ingredient}
 
   describe "products" do
-    test "list_products/0 returns all products" do
-      {:ok, product} = Catalog.create_product(%{name: "Oreo Cookies"})
+    test "list_products/0 returns only verified products" do
+      {:ok, unverified} = Catalog.create_product(%{name: "Oreo Cookies"})
+      assert [] == Catalog.list_products()
+
+      Catalog.verify_product(unverified)
       products = Catalog.list_products()
-      assert Enum.any?(products, &(&1.id == product.id))
+      assert Enum.any?(products, &(&1.id == unverified.id))
     end
 
     test "get_product!/1 returns the product with given id" do
@@ -226,6 +229,51 @@ defmodule Angivaonguoi.CatalogTest do
 
       assert {:error, {:duplicate, found}} = result
       assert found.id == existing.id
+    end
+
+    test "list_all_products/0 returns all products, verified first" do
+      {:ok, a} = Catalog.create_product(%{name: "Product A"})
+      {:ok, b} = Catalog.create_product(%{name: "Product B"})
+      Catalog.verify_product(a)
+
+      all = Catalog.list_all_products()
+      ids = Enum.map(all, & &1.id)
+      assert a.id in ids
+      assert b.id in ids
+      assert hd(ids) == a.id
+    end
+
+    test "verify_product/1 sets verified to true" do
+      {:ok, product} = Catalog.create_product(%{name: "To Verify"})
+      refute product.verified
+
+      assert {:ok, updated} = Catalog.verify_product(product)
+      assert updated.verified
+    end
+
+    test "unverify_product/1 sets verified to false" do
+      {:ok, product} = Catalog.create_product(%{name: "To Unverify"})
+      Catalog.verify_product(product)
+
+      assert {:ok, updated} = Catalog.unverify_product(product)
+      refute updated.verified
+    end
+
+    test "create_product_with_ingredients_and_categories stores uploaded_by_id" do
+      id = System.unique_integer([:positive])
+      {:ok, user} = Accounts.register_user(%{email: "uploader#{id}@test.com", username: "uploader#{id}", password: "pass123"})
+
+      {:ok, product} =
+        Catalog.create_product_with_ingredients_and_categories(
+          "User Product",
+          ["Salt"],
+          [],
+          %{uploaded_by_id: user.id}
+        )
+
+      product = Catalog.get_product!(product.id) |> Angivaonguoi.Repo.preload(:uploaded_by)
+      assert product.uploaded_by_id == user.id
+      assert product.uploaded_by.username == "uploader#{id}"
     end
   end
 end

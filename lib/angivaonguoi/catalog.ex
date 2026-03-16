@@ -9,7 +9,14 @@ defmodule Angivaonguoi.Catalog do
   # ---------------------------------------------------------------------------
 
   def list_products do
-    Repo.all(from p in Product, order_by: [desc: p.id])
+    Repo.all(from p in Product, where: p.verified == true, order_by: [desc: p.id])
+  end
+
+  @doc "All products for admin: verified first, then unverified, both by id desc. Preloads uploaded_by."
+  def list_all_products do
+    from(p in Product, order_by: [desc: p.verified, desc: p.id])
+    |> Repo.all()
+    |> Repo.preload(:uploaded_by)
   end
 
   def get_product!(id), do: Repo.get!(Product, id)
@@ -89,6 +96,18 @@ defmodule Angivaonguoi.Catalog do
     Repo.delete(product)
   end
 
+  def verify_product(%Product{} = product) do
+    product
+    |> Product.changeset(%{verified: true})
+    |> Repo.update()
+  end
+
+  def unverify_product(%Product{} = product) do
+    product
+    |> Product.changeset(%{verified: false})
+    |> Repo.update()
+  end
+
   def create_product_with_ingredients(name, ingredients)
       when is_binary(name) and is_list(ingredients) do
     create_product_with_ingredients_and_categories(name, ingredients, [])
@@ -153,11 +172,24 @@ defmodule Angivaonguoi.Catalog do
     from(p in Product,
       join: pc in ProductCategory,
       on: pc.product_id == p.id,
-      where: pc.category_id == ^category_id,
+      where: pc.category_id == ^category_id and p.verified == true,
       order_by: [desc: p.id],
       distinct: true
     )
     |> Repo.all()
+  end
+
+  @doc "All products in category for admin: verified first, then unverified. Preloads uploaded_by."
+  def list_all_products_by_category(category_id) do
+    from(p in Product,
+      join: pc in ProductCategory,
+      on: pc.product_id == p.id,
+      where: pc.category_id == ^category_id,
+      order_by: [desc: p.verified, desc: p.id],
+      distinct: true
+    )
+    |> Repo.all()
+    |> Repo.preload(:uploaded_by)
   end
 
   @doc """

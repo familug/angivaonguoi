@@ -21,8 +21,15 @@ defmodule Angivaonguoi.ImageProcessor do
 
   Returns `{:ok, product}` or `{:error, reason}`.
   """
-  def process_images(images, image_urls) when is_list(images) and is_list(image_urls) do
+  def process_images(images, image_urls, opts \\ []) when is_list(images) and is_list(image_urls) do
     resized = Enum.map(images, fn {binary, mime} -> do_resize_image(binary, mime) end)
+    uploaded_by_id = Keyword.get(opts, :uploaded_by_id)
+
+    extra = %{
+      image_url: List.first(image_urls),
+      image_urls: image_urls,
+      uploaded_by_id: uploaded_by_id
+    }
 
     with {:ok, {response, model}} <- call_gemini_with_fallback_multi(resized),
          {:ok, %{name: name, ingredients: ingredients, categories: categories, barcode: barcode,
@@ -34,13 +41,13 @@ defmodule Angivaonguoi.ImageProcessor do
              name,
              ingredients,
              categories,
-             %{image_url: List.first(image_urls),
-               image_urls: image_urls,
+             Map.merge(extra, %{
                barcode: barcode,
                energy_kcal_per_100: energy_kcal_per_100,
                energy_unit: energy_unit,
                volume_ml: volume_ml,
-               gemini_model: model}
+               gemini_model: model
+             })
            ) do
       {:ok, product}
     else

@@ -77,14 +77,17 @@ defmodule Angivaonguoi.CatalogCategoriesTest do
     end
 
     test "list_products_by_category/1 returns products in a category" do
-      {:ok, _} =
+      {:ok, hanoi} =
         Catalog.create_product_with_ingredients_and_categories("Hanoi Beer", [], ["Beer"])
 
-      {:ok, _} =
+      {:ok, heineken} =
         Catalog.create_product_with_ingredients_and_categories("Heineken", [], ["Beer"])
 
       {:ok, _} =
         Catalog.create_product_with_ingredients_and_categories("Coca-Cola", [], ["Soft Drinks"])
+
+      Catalog.verify_product(hanoi)
+      Catalog.verify_product(heineken)
 
       category = Catalog.get_category_by_slug!("beer")
       results = Catalog.list_products_by_category(category.id)

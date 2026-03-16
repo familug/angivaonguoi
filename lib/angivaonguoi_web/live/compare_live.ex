@@ -5,7 +5,7 @@ defmodule AngivaonguoiWeb.CompareLive do
 
   @impl true
   def mount(_params, _session, socket) do
-    products = Catalog.list_products()
+    products = load_compare_products(socket)
 
     {:ok,
      socket
@@ -84,7 +84,7 @@ defmodule AngivaonguoiWeb.CompareLive do
 
       <form phx-change="compare" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
         <div>
-          <label class="label"><span class="label-text font-semibold">Product A</span></label>
+          <label class="label"><span class="label-text font-semibold">🅰️ Product A</span></label>
           <select name="a" class="select select-bordered w-full">
             <option value="">— select product —</option>
             <option
@@ -95,7 +95,7 @@ defmodule AngivaonguoiWeb.CompareLive do
           </select>
         </div>
         <div>
-          <label class="label"><span class="label-text font-semibold">Product B</span></label>
+          <label class="label"><span class="label-text font-semibold">🅱️ Product B</span></label>
           <select name="b" class="select select-bordered w-full">
             <option value="">— select product —</option>
             <option
@@ -150,8 +150,8 @@ defmodule AngivaonguoiWeb.CompareLive do
               <thead>
                 <tr>
                   <th>Ingredient</th>
-                  <th><%= @product_a.name %></th>
-                  <th><%= @product_b.name %></th>
+                  <th class="text-center">🅰️</th>
+                  <th class="text-center">🅱️</th>
                 </tr>
               </thead>
               <tbody>
@@ -174,7 +174,7 @@ defmodule AngivaonguoiWeb.CompareLive do
             Only in <%= @product_a.name %> (<%= length(@comparison.only_a) %>)
           </h2>
           <div class="flex flex-wrap gap-2">
-            <span :for={entry <- @comparison.only_a} class="badge badge-outline badge-info py-3 px-4">
+            <span :for={entry <- @comparison.only_a} class="badge badge-outline badge-info py-3 px-4 whitespace-normal h-auto text-left">
               <%= entry.ingredient.name %>
               <span :if={amount_display(entry.amount_a)} class="ml-1 text-xs opacity-70">
                 <%= amount_display(entry.amount_a) %>
@@ -188,7 +188,7 @@ defmodule AngivaonguoiWeb.CompareLive do
             Only in <%= @product_b.name %> (<%= length(@comparison.only_b) %>)
           </h2>
           <div class="flex flex-wrap gap-2">
-            <span :for={entry <- @comparison.only_b} class="badge badge-outline badge-secondary py-3 px-4">
+            <span :for={entry <- @comparison.only_b} class="badge badge-outline badge-secondary py-3 px-4 whitespace-normal h-auto text-left">
               <%= entry.ingredient.name %>
               <span :if={amount_display(entry.amount_b)} class="ml-1 text-xs opacity-70">
                 <%= amount_display(entry.amount_b) %>
@@ -212,6 +212,14 @@ defmodule AngivaonguoiWeb.CompareLive do
       </div>
     </div>
     """
+  end
+
+  defp load_compare_products(socket) do
+    if socket.assigns[:current_user] && socket.assigns.current_user.is_admin do
+      Catalog.list_all_products()
+    else
+      Catalog.list_products()
+    end
   end
 
   defp fetch_product(""), do: {:error, :empty}

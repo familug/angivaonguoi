@@ -15,6 +15,9 @@ defmodule Angivaonguoi.Catalog.Product do
     field :energy_unit, :string
     field :volume_ml, :decimal
     field :gemini_model, :string
+    field :verified, :boolean, default: false
+
+    belongs_to :uploaded_by, Angivaonguoi.Accounts.User
 
     many_to_many :ingredients, Ingredient,
       join_through: ProductIngredient,
@@ -30,7 +33,7 @@ defmodule Angivaonguoi.Catalog.Product do
   @doc false
   def changeset(product, attrs) do
     product
-    |> cast(attrs, [:name, :slug, :image_url, :image_urls, :raw_text, :barcode, :energy_kcal_per_100, :energy_unit, :volume_ml, :gemini_model])
+    |> cast(attrs, [:name, :slug, :image_url, :image_urls, :raw_text, :barcode, :energy_kcal_per_100, :energy_unit, :volume_ml, :gemini_model, :verified, :uploaded_by_id])
     |> validate_required([:name])
     |> validate_length(:name, min: 1, max: 255)
     |> unique_constraint(:name)

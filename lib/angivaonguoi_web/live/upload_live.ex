@@ -109,11 +109,12 @@ defmodule AngivaonguoiWeb.UploadLive do
 
       images = Enum.map(images_and_urls, fn {bin, mime, _url} -> {bin, mime} end)
       image_urls = Enum.map(images_and_urls, fn {_bin, _mime, url} -> url end)
+      uploaded_by_id = socket.assigns[:current_user] && socket.assigns.current_user.id
 
       Task.start(fn ->
         result =
           try do
-            ImageProcessor.process_images(images, image_urls)
+            ImageProcessor.process_images(images, image_urls, uploaded_by_id: uploaded_by_id)
           rescue
             e -> {:error, Exception.message(e)}
           catch

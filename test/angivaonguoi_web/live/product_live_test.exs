@@ -7,8 +7,10 @@ defmodule AngivaonguoiWeb.ProductLiveTest do
 
   describe "Index" do
     test "lists all products", %{conn: conn} do
-      {:ok, _} = Catalog.create_product(%{name: "Oreo Cookies"})
-      {:ok, _} = Catalog.create_product(%{name: "Lay's Chips"})
+      {:ok, p1} = Catalog.create_product(%{name: "Oreo Cookies"})
+      {:ok, p2} = Catalog.create_product(%{name: "Lay's Chips"})
+      Catalog.verify_product(p1)
+      Catalog.verify_product(p2)
 
       {:ok, _view, html} = live(conn, ~p"/products")
 
@@ -20,18 +22,68 @@ defmodule AngivaonguoiWeb.ProductLiveTest do
       {:ok, _view, html} = live(conn, ~p"/products")
       assert html =~ "Upload"
     end
+
+    test "non-admin sees only verified products", %{conn: conn} do
+      {:ok, verified} = Catalog.create_product(%{name: "Verified Product"})
+      {:ok, _unverified} = Catalog.create_product(%{name: "Unverified Product"})
+      Catalog.verify_product(verified)
+
+      {:ok, _view, html} = live(conn, ~p"/products")
+
+      assert html =~ "Verified Product"
+      refute html =~ "Unverified Product"
+    end
+
+    test "admin sees all products including unverified", %{conn: conn} do
+      {:ok, admin} = Accounts.register_user(%{email: "admin@test.com", username: "admin", password: "pass123"})
+      conn = init_test_session(conn, %{"user_id" => admin.id})
+
+      {:ok, verified} = Catalog.create_product(%{name: "Verified Product"})
+      {:ok, _unverified} = Catalog.create_product(%{name: "Unverified Product"})
+      Catalog.verify_product(verified)
+
+      {:ok, _view, html} = live(conn, ~p"/products")
+
+      assert html =~ "Verified Product"
+      assert html =~ "Unverified Product"
+      assert html =~ "Unverified"
+    end
+
+    test "admin sees uploader username", %{conn: conn} do
+      {:ok, admin} = Accounts.register_user(%{email: "admin@test.com", username: "admin", password: "pass123"})
+      {:ok, uploader} = Accounts.register_user(%{email: "uploader@test.com", username: "uploader", password: "pass123"})
+      conn = init_test_session(conn, %{"user_id" => admin.id})
+
+      {:ok, _product} = Catalog.create_product_with_ingredients_and_categories("My Product", ["Salt"], [], %{uploaded_by_id: uploader.id})
+
+      {:ok, _view, html} = live(conn, ~p"/products")
+
+      assert html =~ "My Product"
+      assert html =~ "uploader"
+    end
+
+    test "admin can verify a product", %{conn: conn} do
+      {:ok, admin} = Accounts.register_user(%{email: "admin@test.com", username: "admin", password: "pass123"})
+      conn = init_test_session(conn, %{"user_id" => admin.id})
+
+      {:ok, product} = Catalog.create_product(%{name: "To Verify"})
+      refute product.verified
+
+      {:ok, view, _html} = live(conn, ~p"/products")
+      render_click(view, "verify_product", %{"id" => to_string(product.id)})
+
+      updated = Catalog.get_product!(product.id)
+      assert updated.verified
+    end
   end
 
   describe "Index with category filter" do
     test "filters products by category", %{conn: conn} do
-      {:ok, _} =
-        Catalog.create_product_with_ingredients_and_categories("Hanoi Beer", [], ["Beer"])
-
-      {:ok, _} =
-        Catalog.create_product_with_ingredients_and_categories("Heineken", [], ["Beer"])
-
-      {:ok, _} =
-        Catalog.create_product_with_ingredients_and_categories("Coca-Cola", [], ["Soft Drinks"])
+      {:ok, hanoi} = Catalog.create_product_with_ingredients_and_categories("Hanoi Beer", [], ["Beer"])
+      {:ok, heineken} = Catalog.create_product_with_ingredients_and_categories("Heineken", [], ["Beer"])
+      {:ok, _} = Catalog.create_product_with_ingredients_and_categories("Coca-Cola", [], ["Soft Drinks"])
+      Catalog.verify_product(hanoi)
+      Catalog.verify_product(heineken)
 
       category = Catalog.get_category_by_slug!("beer")
 
@@ -43,8 +95,8 @@ defmodule AngivaonguoiWeb.ProductLiveTest do
     end
 
     test "shows category badges on index page", %{conn: conn} do
-      {:ok, _} =
-        Catalog.create_product_with_ingredients_and_categories("Sprite", [], ["Soft Drinks"])
+      {:ok, sprite} = Catalog.create_product_with_ingredients_and_categories("Sprite", [], ["Soft Drinks"])
+      Catalog.verify_product(sprite)
 
       {:ok, _view, html} = live(conn, ~p"/products")
       assert html =~ "Soft Drinks"

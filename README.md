@@ -28,6 +28,16 @@ source .env && mix phx.server
 
 Visit [http://localhost:4000](http://localhost:4000).
 
+### E2E tests (Playwright)
+
+```bash
+# Seed data for e2e (admin@e2e.test / e2eadmin123, verified + unverified products)
+mix run priv/repo/seeds.exs
+
+# Start server, then in another terminal:
+cd e2e && npx playwright test
+```
+
 ---
 
 ## Deploy with Podman Compose
