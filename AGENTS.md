@@ -6,7 +6,8 @@ _Last updated: 2026-03-14_
 A Phoenix LiveView web app for browsing food products, their ingredients, and categories.
 Users upload a product label photo; Gemini Vision AI reads it and auto-creates the product
 with ingredients and categories. Products tagged "Beer" (e.g. Hanoi Beer, Heineken) share
-the same category so users can filter by it.
+the same category so users can filter by it. Only **verified** products appear in the public
+product list; admins see all products and can verify/unverify.
 
 ## Tech Stack
 
@@ -24,7 +25,7 @@ the same category so users can filter by it.
 | Module | Purpose |
 |--------|---------|
 | `Catalog` | Main context: all DB operations for products, ingredients, categories |
-| `Catalog.Product` | Schema — `name`, `image_url`, `raw_text`; many_to_many ingredients & categories |
+| `Catalog.Product` | Schema — `name`, `slug`, `image_url`, `raw_text`, `verified`, `uploaded_by_id`; many_to_many ingredients & categories |
 | `Catalog.Ingredient` | Schema — `name`; many_to_many products |
 | `Catalog.Category` | Schema — `name`, `slug` (auto-generated); many_to_many products |
 | `Catalog.ProductIngredient` | Join table schema |
@@ -35,18 +36,20 @@ the same category so users can filter by it.
 ### Key Catalog functions
 
 ```elixir
-Catalog.list_products()
-Catalog.get_product_with_all!(id)          # preloads ingredients + categories
-Catalog.ingredient_amounts_for(product)    # returns %{ingredient_id => %ProductIngredient{}}
+Catalog.list_products()                              # Only verified (public)
+Catalog.list_all_products()                          # All products, verified first (admin)
+Catalog.list_products_by_category(category_id)       # Only verified in category
+Catalog.list_all_products_by_category(category_id)   # All in category, verified first (admin)
+Catalog.get_product_with_all!(id)                    # preloads ingredients + categories
+Catalog.ingredient_amounts_for(product)              # returns %{ingredient_id => %ProductIngredient{}}
 Catalog.create_product_with_ingredients_and_categories(name, ingredients, categories)
-# ingredients can be plain strings OR maps: %{name:, amount_percent:, amount_raw:}
+Catalog.verify_product(product)                      # Sets verified = true
+Catalog.unverify_product(product)                    # Sets verified = false
 Catalog.add_ingredient_to_product(product, name, amounts \\ %{})
 Catalog.add_category_to_product(product, name)
 Catalog.search_products_by_ingredient(name, sort: :name | :amount_desc | :amount_asc)
-# returns products with :amount_percent and :amount_raw merged in
-Catalog.list_products_by_category(category_id)
 Catalog.get_or_create_ingredient(name)
-Catalog.get_or_create_category(name)        # deduplicates by slug (case-insensitive)
+Catalog.get_or_create_category(name)
 Catalog.get_category_by_slug!(slug)
 ```
 
@@ -54,53 +57,57 @@ Catalog.get_category_by_slug!(slug)
 
 | LiveView | Route | Purpose |
 |----------|-------|---------|
-| `ProductLive.Index` | `GET /products` | Product grid; category filter badges via `?category=<id>` |
-| `ProductLive.Show` | `GET /products/:id` | Product detail; ingredient badges link to ingredient page; category badges link to filtered list |
+| `ProductLive.Index` | `GET /products` | Product grid; category filter; admin sees all + Verify/Unverify + uploader |
+| `ProductLive.Show` | `GET /products/:slug` | Product detail; ingredient/category badges |
 | `IngredientLive.Show` | `GET /ingredients/:id` | Ingredient detail; lists all products containing it |
-| `CategoryLive.Show` | `GET /categories/:id` | All products in a category |
-| `SearchLive` | `GET /search` | Search products by ingredient name (phx-submit form) |
-| `UploadLive` | `GET /upload` | Image upload; `auto_upload: true` + `progress:` callback triggers Gemini on `entry.done?` |
+| `CategoryLive.Show` | `GET /categories/:id` | All verified products in a category |
+| `SearchLive` | `GET /search` | Search products by ingredient name |
+| `UploadLive` | `GET /upload` | Image upload; passes `uploaded_by_id`; `auto_upload: true` + `progress:` |
+| `CompareLive` | `GET /compare` | Compare two products; dropdown uses `list_all_products` for admin, `list_products` for others |
 
 Root `GET /` redirects to `/products`.
+
+### Compare page specifics
+
+- Ingredient badges: `whitespace-normal h-auto text-left` for long names (no layout break)
+- Common-ingredients table: column headers use 🅰️ and 🅱️ instead of product names
+- Labels: "🅰️ Product A" and "🅱️ Product B"
 
 ## Database Migrations (in order)
 
 ```
 create_products                    — id, name (unique), image_url, raw_text, timestamps
 create_ingredients                 — id, name (unique), timestamps
-create_product_ingredients         — product_id, ingredient_id (unique pair), timestamps
-add_amount_to_product_ingredients  — adds amount_percent (decimal 7,3) and amount_raw (string)
+create_product_ingredients          — product_id, ingredient_id (unique pair), timestamps
+add_amount_to_product_ingredients   — amount_percent, amount_raw
 create_categories                  — id, name (unique), slug (unique), timestamps
 create_product_categories          — product_id, category_id (unique pair), timestamps
+add_verified_and_uploaded_by_to_products — verified (boolean, default false), uploaded_by_id (FK users)
+verify_existing_products           — sets existing products verified = true
 ```
 
 ## Key Files
 
 ```
-lib/angivaonguoi/catalog.ex                        # All business logic
+lib/angivaonguoi/catalog.ex                        # All business logic, list/list_all, verify/unverify
+lib/angivaonguoi/catalog/product.ex                # Schema: verified, uploaded_by
 lib/angivaonguoi/gemini_parser.ex                  # Parses Gemini JSON response
-lib/angivaonguoi/image_processor.ex                # Gemini API call + fallback
-lib/angivaonguoi_web/live/upload_live.ex           # Image upload LiveView
-lib/angivaonguoi_web/live/product_live/index.ex    # Product listing + category filter
-lib/angivaonguoi_web/live/product_live/show.ex     # Product detail
+lib/angivaonguoi/image_processor.ex                # Gemini API call + fallback; passes uploaded_by_id
+lib/angivaonguoi_web/live/upload_live.ex           # Image upload; passes current_user.id as uploaded_by_id
+lib/angivaonguoi_web/live/product_live/index.ex    # Product list; admin vs public; verify buttons
+lib/angivaonguoi_web/live/product_live/show.ex    # Product detail
+lib/angivaonguoi_web/live/compare_live.ex         # Compare two products; emoji headers
 lib/angivaonguoi_web/live/ingredient_live/show.ex  # Ingredient detail
-lib/angivaonguoi_web/live/search_live.ex           # Ingredient search
-lib/angivaonguoi_web/components/layouts/root.html.heex  # Navbar
+lib/angivaonguoi_web/live/search_live.ex          # Ingredient search
+priv/repo/seeds.exs                                # E2E seeds: admin, verified/unverified products
 config/config.exs                                  # gemini_api_key from env
-config/dev.exs                                     # http: [{0,0,0,0}] — listens on all interfaces
 ```
 
 ## Running the App
 
 ```bash
 # Prerequisites: PostgreSQL running, Elixir installed
-# Required erlang packages: erlang-core, erlang-inets, erlang-ssl, erlang-crypto,
-#   erlang-public_key, erlang-parsetools, erlang-syntax_tools, erlang-tools,
-#   erlang-runtime_tools, erlang-xmerl
-
-# Set API key (get free key at https://aistudio.google.com/app/apikey)
-export GEMINI_API_KEY=your_key_here
-# or: source .env  (file exists at project root)
+export GEMINI_API_KEY=your_key_here   # or: source .env
 
 mix deps.get
 mix ecto.migrate
@@ -108,30 +115,39 @@ mix phx.server
 # App runs at http://0.0.0.0:4000
 ```
 
+### E2E tests (Playwright)
+
+```bash
+mix run priv/repo/seeds.exs   # Seeds admin@e2e.test / e2eadmin123, verified + unverified products
+cd e2e && npx playwright test
+```
+
 ## Conventions
 
 - **Red/Green TDD**: write failing tests first, then implement. Test files mirror lib paths under `test/`.
 - **Context pattern**: all DB access goes through `Angivaonguoi.Catalog`, never direct Repo calls from LiveViews.
-- **Category deduplication**: `get_or_create_category/1` looks up by `slug` (lowercased, hyphenated), so "Beer" and "beer" resolve to the same record.
-- **No form submit for uploads**: `auto_upload: true` + `progress: &handle_progress/3` — processing triggers when `entry.done? == true`, not on form submit. This avoids the race where submit fires before bytes arrive.
-- **Gemini calls are async**: `Task.start/1` + `send(lv, {:image_processed, result})` pattern in `UploadLive` — keeps LiveView socket responsive.
-- **Gemini model fallback**: `ImageProcessor` tries `gemini-2.5-flash` → `gemini-2.0-flash` → `gemini-2.0-flash-lite` on 429 rate limit errors.
+- **Verified products**: `list_products` / `list_products_by_category` return only verified; `list_all_*` for admin.
+- **Category deduplication**: `get_or_create_category/1` looks up by `slug` (lowercased, hyphenated).
+- **No form submit for uploads**: `auto_upload: true` + `progress: &handle_progress/3` — processing when `entry.done? == true`.
+- **Gemini calls are async**: `Task.start/1` + `send(lv, {:image_processed, result})` in `UploadLive`.
+- **Gemini model fallback**: `ImageProcessor` tries `gemini-2.5-flash` → `gemini-2.0-flash` → `gemini-2.0-flash-lite` on 429.
 
-## Current State (as of last update)
+## Current State
 
-- All features complete and working: upload → AI parse → save → browse → search
-- 56 unit tests + 18 Playwright e2e tests, all passing
-- Ingredient amounts (% and raw string) stored on `product_ingredients` join table and shown in UI
-- Search page has sort dropdown: A-Z, highest % first, lowest % first
-- Gemini free tier quota can be exhausted; fallback chain handles it
+- All features complete: upload → AI parse → save → browse → search → compare
+- Verified products: only verified show publicly; admin sees all, can verify/unverify, sees uploader
+- Compare page: badge CSS fixed, 🅰️/🅱️ column headers
+- Unit tests + LiveView tests + Playwright e2e tests, all passing
 
 ## Gotchas
 
-- **Arch Linux Erlang is split packages** — need to install individual `erlang-*` packages (`erlang-xmerl`, `erlang-parsetools`, `erlang-syntax_tools`, etc.), NOT the `erlang` meta-package which pulls in webkit2gtk and fails.
-- **PostgreSQL on Arch**: must `initdb` manually before first `systemctl start postgresql`. Use `sudo -u postgres initdb -D /var/lib/postgres/data` (no locale flag — default locale works).
-- **`consume_uploaded_entries` returns `[]`** if called before upload channel completes. Always use `progress:` callback with `entry.done?` check instead of a form submit handler.
-- **Gemini API key env var name**: must be `GEMINI_API_KEY` — the `.env` file originally had `GEMINI_API_TOKEN` (wrong name).
-- **Gemini model names**: use exact names from ListModels — `gemini-2.5-flash`, `gemini-2.0-flash`, `gemini-2.0-flash-lite`. No preview suffixes. `gemini-1.5-*` not available on v1beta.
-- **`config/dev.exs`** has `http: [ip: {0, 0, 0, 0}]` to allow LAN access. Default Phoenix is `{127, 0, 0, 1}`.
-- **Never do Repo queries inside a failed transaction** — after a constraint violation inside `Repo.transaction`, Postgres aborts the entire transaction block (`ERROR 25P02`). Any subsequent `Repo` call in the same transaction will fail with "current transaction is aborted, commands ignored until end of transaction block". Always run fallback/lookup queries (e.g. duplicate detection) **after** the transaction closes, using `Repo.in_transaction?()` to guard or by restructuring so the lookup only happens at the outermost caller after `Repo.transaction` returns.
-- **Test the full production call path, not just individual functions** — a unit test for `create_product/1` in isolation won't catch bugs that only appear when it's called inside `Repo.transaction/1` from `create_product_with_ingredients_and_categories/4`. Always add an integration test that exercises the real entry point used in production.
+- **Arch Linux Erlang** — install individual `erlang-*` packages, NOT the `erlang` meta-package (pulls webkit2gtk).
+- **PostgreSQL on Arch**: `sudo -u postgres initdb -D /var/lib/postgres/data` before first `systemctl start postgresql`.
+- **`consume_uploaded_entries` returns `[]`** if called before upload channel completes. Use `progress:` with `entry.done?` check.
+- **Gemini API key**: env var must be `GEMINI_API_KEY` (not `GEMINI_API_TOKEN`).
+- **Gemini model names**: exact names — `gemini-2.5-flash`, `gemini-2.0-flash`, `gemini-2.0-flash-lite`.
+- **`config/dev.exs`**: `http: [ip: {0, 0, 0, 0}]` for LAN access.
+- **Never do Repo queries inside a failed transaction** — after a constraint violation, Postgres aborts the block (`ERROR 25P02`). Run fallback/lookup **after** the transaction closes; use `Repo.in_transaction?()` to guard. `create_product` does not call `resolve_duplicate` when inside a transaction; the outer `create_product_with_ingredients_and_categories` does it after the transaction returns.
+- **E2E login form**: use `input[name='email']` and `input[name='password']` (not `user[email]`).
+- **E2E admin**: seeds set `is_admin: true` via `Repo.update_all` for the e2e admin user.
+- **E2E test isolation**: admin verify test must unverify at the end to restore state; otherwise "unverified hidden" test fails on rerun.
