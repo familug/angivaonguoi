@@ -214,6 +214,7 @@ defmodule Angivaonguoi.GeminiParserTest do
       assert prompt =~ "product_name"
       assert prompt =~ "ingredients"
       assert prompt =~ "categories"
+      assert prompt =~ "Vietnamese"
     end
 
     test "prompt includes energy extraction instructions" do

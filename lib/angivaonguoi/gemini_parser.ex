@@ -47,6 +47,8 @@ defmodule Angivaonguoi.GeminiParser do
     """
     You are a food label data extractor. Your job is to read a product packaging image and extract specific fields.
 
+    AUDIENCE: The website is for Vietnamese users. When the label shows the same item in both Vietnamese and English (product name, ingredients, etc.), always prefer the Vietnamese text for fields you extract (except "categories", which stay in English as specified below).
+
     STRICT RULES — read carefully before extracting:
     - Only extract text that is CLEARLY VISIBLE and LEGIBLE in the image. If you cannot read it clearly, use null.
     - Do NOT guess, infer, or hallucinate any value. If unsure, use null.
@@ -64,7 +66,8 @@ defmodule Angivaonguoi.GeminiParser do
     3. INGREDIENTS LIST
        - Find the section explicitly labelled "Ingredients", "Thành phần", or equivalent.
        - Read ONLY from that ingredients section — do NOT pull names from the nutrition facts table, which is a separate section listing nutrients like protein, fat, sodium, etc.
-       - Copy each ingredient name EXACTLY as printed. Do NOT simplify, merge, or paraphrase.
+       - If an ingredient appears in both Vietnamese and English on one line (e.g. "Đường (Sugar)", "Muối / Salt"), put ONLY the Vietnamese name in "name" — do not include the English part.
+       - Copy each ingredient name EXACTLY as printed (after applying the Vietnamese-only rule above). Do NOT simplify, merge, or paraphrase.
          Example: if the label lists "Đường HFCS" and "Đường mía" as separate items, they are TWO separate entries. Never merge them into "Đường".
        - Each ingredient must have:
          - "name": ingredient name only, WITHOUT any percentage or amount
