@@ -212,6 +212,18 @@ test.describe("Verified product visibility", () => {
   test("unverified product hidden from public listing", async ({ page }) => {
     await goto(page, "/products");
     await expect(page.getByText("E2E Unverified Product")).not.toBeVisible();
+    await expect(page.getByText("E2E Owner Unverified Product")).not.toBeVisible();
+  });
+
+  // Seeded via: mix run priv/repo/seeds.exs — owner@e2e.test / e2eowner123, "E2E Owner Unverified Product"
+  test("logged-in owner sees own unverified product on listing", async ({ page }) => {
+    await goto(page, "/login");
+    await page.fill("input[name='email']", "owner@e2e.test");
+    await page.fill("input[name='password']", "e2eowner123");
+    await page.getByRole("button", { name: /log in/i }).click();
+    await page.waitForURL(/\/(products)?$/);
+    await goto(page, "/products");
+    await expect(page.getByText("E2E Owner Unverified Product")).toBeVisible();
   });
 
   test("admin sees unverified product and can verify it", async ({ page }) => {
@@ -225,11 +237,14 @@ test.describe("Verified product visibility", () => {
     await unverifiedCard.getByRole("button", { name: "Verify" }).click();
     await page.waitForLoadState("networkidle");
 
-    const verifiedCard = page.locator(".card").filter({ hasText: "E2E Unverified Product" });
-    await expect(verifiedCard.getByRole("button", { name: "Unverify" })).toBeVisible();
+    const unverifiedName = "E2E Unverified Product";
+    const cardWithProduct = page.locator(".card").filter({ hasText: unverifiedName });
+    await expect(cardWithProduct.getByRole("button", { name: "Unverify" })).toBeVisible();
 
-    // Restore state for next run
-    await verifiedCard.getByRole("button", { name: "Unverify" }).click();
+    // Restore state for next run (fresh locator — LiveView may replace the card node)
+    const unverifyBtn = cardWithProduct.getByRole("button", { name: "Unverify" });
+    await unverifyBtn.scrollIntoViewIfNeeded();
+    await unverifyBtn.click();
     await page.waitForLoadState("networkidle");
   });
 });

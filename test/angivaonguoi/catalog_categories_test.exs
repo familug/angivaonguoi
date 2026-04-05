@@ -76,6 +76,38 @@ defmodule Angivaonguoi.CatalogCategoriesTest do
       assert "Alcohol" in category_names
     end
 
+    test "list_products_by_category_for_viewer/2 includes uploader's unverified product in category" do
+      alias Angivaonguoi.Accounts
+
+      {:ok, u1} = Accounts.register_user(%{email: "catv1@test.com", username: "catv1", password: "pass123"})
+      {:ok, u2} = Accounts.register_user(%{email: "catv2@test.com", username: "catv2", password: "pass123"})
+
+      {:ok, _mine} =
+        Catalog.create_product_with_ingredients_and_categories(
+          "My Beer In Category",
+          [],
+          ["Beer"],
+          %{uploaded_by_id: u1.id}
+        )
+
+      {:ok, _} =
+        Catalog.create_product_with_ingredients_and_categories(
+          "Their Beer Unverified",
+          [],
+          ["Beer"],
+          %{uploaded_by_id: u2.id}
+        )
+
+      category = Catalog.get_category_by_slug!("beer")
+
+      names =
+        Catalog.list_products_by_category_for_viewer(category.id, u1.id)
+        |> Enum.map(& &1.name)
+
+      assert "My Beer In Category" in names
+      refute "Their Beer Unverified" in names
+    end
+
     test "list_products_by_category/1 returns products in a category" do
       {:ok, hanoi} =
         Catalog.create_product_with_ingredients_and_categories("Hanoi Beer", [], ["Beer"])

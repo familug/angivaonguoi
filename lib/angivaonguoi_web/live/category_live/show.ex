@@ -6,12 +6,26 @@ defmodule AngivaonguoiWeb.CategoryLive.Show do
   @impl true
   def mount(%{"id" => id}, _session, socket) do
     category = Catalog.get_category!(id)
-    products = Catalog.list_products_by_category(id)
 
     {:ok,
      socket
      |> assign(:category, category)
-     |> assign(:products, products)}
+     |> assign(:products, load_category_products(socket, id))}
+  end
+
+  defp load_category_products(socket, category_id) do
+    user = socket.assigns[:current_user]
+
+    cond do
+      user && user.is_admin ->
+        Catalog.list_all_products_by_category(category_id)
+
+      user ->
+        Catalog.list_products_by_category_for_viewer(category_id, user.id)
+
+      true ->
+        Catalog.list_products_by_category(category_id)
+    end
   end
 
   @impl true

@@ -55,12 +55,24 @@ defmodule AngivaonguoiWeb.ProductLive.Index do
   end
 
   defp load_products(socket, category_id) do
-    admin? = socket.assigns[:current_user] && socket.assigns.current_user.is_admin
+    user = socket.assigns[:current_user]
+    admin? = user && user.is_admin
 
-    if admin? do
-      if category_id, do: Catalog.list_all_products_by_category(category_id), else: Catalog.list_all_products()
-    else
-      if category_id, do: Catalog.list_products_by_category(category_id), else: Catalog.list_products()
+    cond do
+      admin? && category_id ->
+        Catalog.list_all_products_by_category(category_id)
+
+      admin? ->
+        Catalog.list_all_products()
+
+      category_id ->
+        Catalog.list_products_by_category_for_viewer(category_id, user && user.id)
+
+      user ->
+        Catalog.list_products_for_viewer(user.id)
+
+      true ->
+        Catalog.list_products()
     end
   end
 

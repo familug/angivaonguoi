@@ -231,16 +231,46 @@ defmodule Angivaonguoi.CatalogTest do
       assert found.id == existing.id
     end
 
-    test "list_all_products/0 returns all products, verified first" do
-      {:ok, a} = Catalog.create_product(%{name: "Product A"})
-      {:ok, b} = Catalog.create_product(%{name: "Product B"})
-      Catalog.verify_product(a)
+    test "list_all_products/0 returns all products, newest first (admin moderation queue)" do
+      {:ok, older} = Catalog.create_product(%{name: "Product Older"})
+      {:ok, newer} = Catalog.create_product(%{name: "Product Newer"})
+      Catalog.verify_product(older)
 
       all = Catalog.list_all_products()
       ids = Enum.map(all, & &1.id)
-      assert a.id in ids
-      assert b.id in ids
-      assert hd(ids) == a.id
+      assert older.id in ids
+      assert newer.id in ids
+      assert hd(ids) == newer.id
+    end
+
+    test "list_products_for_viewer/1 with nil returns only verified products" do
+      {:ok, _} = Catalog.create_product(%{name: "Hidden"})
+      {:ok, v} = Catalog.create_product(%{name: "Visible"})
+      Catalog.verify_product(v)
+
+      names = Catalog.list_products_for_viewer(nil) |> Enum.map(& &1.name)
+      assert "Visible" in names
+      refute "Hidden" in names
+    end
+
+    test "list_products_for_viewer/1 with user id includes that user's unverified uploads" do
+      {:ok, u1} = Accounts.register_user(%{email: "v1@test.com", username: "v1", password: "pass123"})
+      {:ok, u2} = Accounts.register_user(%{email: "v2@test.com", username: "v2", password: "pass123"})
+
+      {:ok, shared} = Catalog.create_product(%{name: "Shared Verified"})
+      Catalog.verify_product(shared)
+
+      {:ok, _} =
+        Catalog.create_product(%{name: "Other Unverified", uploaded_by_id: u2.id})
+
+      {:ok, _mine} =
+        Catalog.create_product(%{name: "My Unverified", uploaded_by_id: u1.id})
+
+      names = Catalog.list_products_for_viewer(u1.id) |> Enum.map(& &1.name)
+
+      assert "Shared Verified" in names
+      assert "My Unverified" in names
+      refute "Other Unverified" in names
     end
 
     test "verify_product/1 sets verified to true" do

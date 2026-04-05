@@ -23,7 +23,7 @@ defmodule AngivaonguoiWeb.ProductLiveTest do
       assert html =~ "Upload"
     end
 
-    test "non-admin sees only verified products", %{conn: conn} do
+    test "guest sees only verified products", %{conn: conn} do
       {:ok, verified} = Catalog.create_product(%{name: "Verified Product"})
       {:ok, _unverified} = Catalog.create_product(%{name: "Unverified Product"})
       Catalog.verify_product(verified)
@@ -32,6 +32,28 @@ defmodule AngivaonguoiWeb.ProductLiveTest do
 
       assert html =~ "Verified Product"
       refute html =~ "Unverified Product"
+    end
+
+    test "logged-in uploader sees own unverified product on index", %{conn: conn} do
+      {:ok, _} = Accounts.register_user(%{email: "admin-for-uploader@test.com", username: "adm", password: "pass123"})
+      {:ok, uploader} = Accounts.register_user(%{email: "uploader-list@test.com", username: "uploaderlist", password: "pass123"})
+      {:ok, other} = Accounts.register_user(%{email: "other-list@test.com", username: "otherlist", password: "pass123"})
+      conn = init_test_session(conn, %{"user_id" => uploader.id})
+
+      {:ok, verified} = Catalog.create_product(%{name: "Everyone Sees This"})
+      Catalog.verify_product(verified)
+
+      {:ok, _} =
+        Catalog.create_product(%{name: "Someone Elses Draft", uploaded_by_id: other.id})
+
+      {:ok, _} =
+        Catalog.create_product(%{name: "My Draft Product", uploaded_by_id: uploader.id})
+
+      {:ok, _view, html} = live(conn, ~p"/products")
+
+      assert html =~ "Everyone Sees This"
+      assert html =~ "My Draft Product"
+      refute html =~ "Someone Elses Draft"
     end
 
     test "admin sees all products including unverified", %{conn: conn} do

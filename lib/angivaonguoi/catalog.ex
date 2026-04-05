@@ -12,9 +12,25 @@ defmodule Angivaonguoi.Catalog do
     Repo.all(from p in Product, where: p.verified == true, order_by: [desc: p.id])
   end
 
-  @doc "All products for admin: verified first, then unverified, both by id desc. Preloads uploaded_by."
+  @doc """
+  Public index for guests: same as `list_products/0`.
+
+  For a logged-in user id, returns verified products plus any product that user
+  uploaded (verified or not), newest first.
+  """
+  def list_products_for_viewer(nil), do: list_products()
+
+  def list_products_for_viewer(user_id) when is_integer(user_id) do
+    from(p in Product,
+      where: p.verified == true or p.uploaded_by_id == ^user_id,
+      order_by: [desc: p.inserted_at, desc: p.id]
+    )
+    |> Repo.all()
+  end
+
+  @doc "All products for admin: newest first so fresh uploads surface for moderation. Preloads uploaded_by."
   def list_all_products do
-    from(p in Product, order_by: [desc: p.verified, desc: p.id])
+    from(p in Product, order_by: [desc: p.inserted_at, desc: p.id])
     |> Repo.all()
     |> Repo.preload(:uploaded_by)
   end
@@ -179,17 +195,35 @@ defmodule Angivaonguoi.Catalog do
     |> Repo.all()
   end
 
-  @doc "All products in category for admin: verified first, then unverified. Preloads uploaded_by."
+  @doc "All products in category for admin: newest first. Preloads uploaded_by."
   def list_all_products_by_category(category_id) do
     from(p in Product,
       join: pc in ProductCategory,
       on: pc.product_id == p.id,
       where: pc.category_id == ^category_id,
-      order_by: [desc: p.verified, desc: p.id],
+      order_by: [desc: p.inserted_at, desc: p.id],
       distinct: true
     )
     |> Repo.all()
     |> Repo.preload(:uploaded_by)
+  end
+
+  @doc """
+  Category listing for guests: only verified in that category.
+
+  For a user id, also includes unverified products in the category that they uploaded.
+  """
+  def list_products_by_category_for_viewer(category_id, nil), do: list_products_by_category(category_id)
+
+  def list_products_by_category_for_viewer(category_id, user_id) when is_integer(user_id) do
+    from(p in Product,
+      join: pc in ProductCategory,
+      on: pc.product_id == p.id,
+      where: pc.category_id == ^category_id and (p.verified == true or p.uploaded_by_id == ^user_id),
+      order_by: [desc: p.inserted_at, desc: p.id],
+      distinct: true
+    )
+    |> Repo.all()
   end
 
   @doc """

@@ -59,3 +59,46 @@ case Repo.one(from p in Product, where: p.name == "E2E Unverified Product") do
   _ ->
     :ok
 end
+
+# Reset verification so e2e stays idempotent after a partial admin test run
+Repo.update_all(from(p in Product, where: p.name == "E2E Unverified Product"), set: [verified: false])
+
+# Non-admin owner for e2e: sees own unverified product on /products
+owner =
+  case Accounts.get_user_by_email("owner@e2e.test") do
+    nil ->
+      {:ok, user} =
+        Accounts.register_user(%{
+          email: "owner@e2e.test",
+          username: "e2eowner",
+          password: "e2eowner123"
+        })
+
+      user
+
+    user ->
+      user
+  end
+
+Repo.update_all(
+  from(u in Angivaonguoi.Accounts.User, where: u.email == "owner@e2e.test"),
+  set: [is_admin: false]
+)
+
+case Repo.one(from p in Product, where: p.name == "E2E Owner Unverified Product") do
+  nil ->
+    Catalog.create_product_with_ingredients_and_categories(
+      "E2E Owner Unverified Product",
+      ["Salt"],
+      ["Snacks"],
+      %{uploaded_by_id: owner.id}
+    )
+
+  _ ->
+    :ok
+end
+
+Repo.update_all(
+  from(p in Product, where: p.name == "E2E Owner Unverified Product"),
+  set: [verified: false]
+)
